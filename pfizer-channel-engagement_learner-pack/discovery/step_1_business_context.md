@@ -25,7 +25,7 @@ Products move from the central distribution center (CDC) to carrying and forward
 
 **Working hypothesis:** Better forecasting and allocation, using reliable downstream demand signals, may help reduce expiry-related financial leakage while improving product availability; the case asks for an AI demand-forecasting capability and evidence of money recovered or protected, but the supplied records do not yet establish the root cause, a recoverable amount, or whether primary shipments are an acceptable forecast target.
 
-Treat this as a hypothesis, not a confirmed diagnosis. In particular, stockist sell-through and inventory are missing; the reported 1% ambition also needs a precise Finance definition before it can be treated as a measurable target. See [business_problem_validation.md](business_problem_validation.md) and [implementation_plan.md](implementation_plan.md).
+Treat this as a hypothesis, not a confirmed diagnosis. In particular, stockist sell-through and inventory are missing; the reported 1% ambition also needs a precise Finance definition before it can be treated as a measurable target. See [business_problem_validation.md](business_problem_validation.md) and [implementation_plan.md](archive/implementation_plan.md).
 
 ## Sources and interpretation notes
 

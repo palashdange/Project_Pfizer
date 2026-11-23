@@ -4,11 +4,11 @@ Architecture Note: Project Sankalp System Design and Operational Engine
 
 ## 1. System Mission and Operational Framing
 
-The proposed Project Sankalp architecture is a read-only review aid for investigating claims and domestic-channel supply signals in a fictional case. The evidence supports several concerns but does not establish one root cause or quantify avoidable loss. The forum discussion suggests testing allocation and manual claims controls before treating forecast error as the primary issue.
+The proposed pilot is a read-only weekly Supply Chain review for the fictional case: identify which CFA–SKU availability gaps or aging-batch signals need investigation before the next planning cycle. The primary user is Head of Supply Chain Kavita Rao; Lead Demand Planning Vaishali Kapoor is the planning partner, based on the case interview notes. This is a proposed case scope, not validation with real process owners.
 
-The proposed system is a read-only analytical copilot alongside existing enterprise systems. The local prototype has no SAP or WMS write-back, does not post credit notes, and does not initiate Stock Transfer Orders (STOs). It is not air-gapped and has not been deployed for operational use. The proposed pilot can provide auditable triage for Finance and Supply Chain reviewers. The case discussion suggests weekly review, but the cadence and owners remain pilot assumptions:
-* Commercial Finance Claims Reviewer: A proposed weekly review of pasted claim text or register rows against claims, billing, batch, and policy evidence. The current prototype has no live mailbox ingestion and does not issue claim decisions.
-* Supply Chain Reviewer: A proposed review of shelf-life candidates, stock signals, and allocation assumptions. Current extracts support retrospective analysis only; they do not provide live planned dispatches or reliable downstream demand.
+Sizing identifies ₹15.33 crore/year of order quantity not covered by invoiced or free packs, valued at PTS, as the largest screening signal. It is not confirmed lost sales or recoverable value. The separate ₹22.32 crore/year invoiced-only gap is an overlapping diagnostic, not an additive estimate. No stockist sell-through, stock-on-hand, or order cancellation status is supplied. A shipment baseline may support the review, but it cannot be described as downstream demand or as the solution to claim leakage, scheme controls, or dispatch compliance. The sizing and limits are documented in `Discovery_note.md` and `sizing_results.csv`.
+
+The local prototype is a read-only analytical copilot alongside existing systems. It has no SAP or WMS write-back, does not post credit notes, and does not initiate Stock Transfer Orders (STOs). It is not air-gapped and has not been deployed for operational use. The first pilot scope is Supply Chain availability and aging-stock triage; Finance claim screening remains a separate opportunity, not a second primary workflow.
 
 Any operational use requires confirmation of the source policy, named decision owners, data freshness, and security review. Human reviewers retain authority; this design does not claim to establish statutory or regulatory compliance.
 
@@ -83,7 +83,7 @@ The language model operates strictly as an unstructured-to-structured semantic p
 | **Adversarial Prompt Guard** | Detect and defuse injection attacks attempting policy bypass (e.g., `claim_emails.csv` row 18, `EML-017`) | Deterministic Regex + Guardrail Node | Python `re` + Static Input Sanitizer | Pre-LLM sanitization strips system instructions, roleplay overrides, and fake executive approvals before model invocation. |
 | **Residual Shelf Life (RSL) Engine** | Calculate percentage of remaining shelf life at dispatch against mandatory 60% threshold | Deterministic Python Node | Standard Library `datetime` | Formula: `(Expiry Date - Invoice Date) / (Expiry Date - Mfg Date) * 100 &lt; 60%`. Float arithmetic cannot suffer model drift or rounding hallucinations. |
 | **Two-Way Transaction Match** | Reconcile batch number, stockist account, and claimed quantity against primary billing | Deterministic Python Node | Pandas / DuckDB Relational Join | Foreign-key match against `primary_sales.csv` and `batch_master.csv`. Exact integer comparisons enforce `claimed_qty &lt;= invoiced_qty`. |
-| **Temporal Policy Validator** | Derive claim category from batch-master expiry and screen the 90-day window before or after expiry | Deterministic Python Node | Standard Library `datetime` | Calendar-day arithmetic for expiry claims: include 90 days before through 90 days after the batch-master expiry date. This follows the forum interpretation of CO-POL-014 §5.2 and requires verification against the PDF. Preserve derived category and any submitted-label mismatch; missing data routes to human review. |
+| **Temporal Policy Validator** | Derive claim category from batch-master expiry and screen the applicable submission window | Deterministic Python Node | Standard Library `datetime` | Apply CO-POL-014 §5.2 by claim type: Near-expiry from 90 days before expiry through expiry; Expired from expiry through 90 days after; Breakage and Short supply within 7 days of the original invoice. Preserve derived category and any submitted-label mismatch; missing data routes to human review. |
 | **Duplicate Claim Filter** | Identify identical `(stockist_code, batch_no)` submissions previously credited | Deterministic Python Node | In-Memory Set / Key-Value Lookup | Immediate match against historical settled ledger (`expiry_claims.csv`). Prevents multiple payouts on identical batches. |
 | **Baseline Shipment Projection** | Generate transparent seasonal-naïve primary sales baselines for replenishment | Deterministic Python Node | NumPy / Pandas | Direct calculation of identical month prior year (`T-12`) invoiced plus free packs. Never claims to predict unobserved secondary demand. |
 | **Audit Synthesis &amp; Drafting** | Format evaluation findings into structured, readable rationale for human reviewers | Constrained Language Model | LangGraph Formatter Node | Synthesizes passed/failed rule results into clear professional summaries citing exact source rows. Constrained to provided structured payload. |
@@ -113,7 +113,7 @@ The deterministic tool functions dispatched by the LangGraph engine operate dire
 ### 4.2 `find_short_shelf_life_shipments(limit: int = 25) -> Dict[str, Any]`
 
 - **Target datasets:** `primary_sales.csv` joined with `batch_master.csv` on `batch_no`.
-- **Mathematical Formulation**: Using invoice date as the agreed operational proxy for warehouse dispatch date, the tool evaluates the remaining lifespan:
+- **Mathematical Formulation**: CO-POL-014 §7.1 defines the shelf-life threshold at invoice date. The tool evaluates remaining shelf life on that date:
 
   $$
   \text{Remaining shelf life (\%)} =
@@ -136,7 +136,7 @@ The deterministic tool functions dispatched by the LangGraph engine operate dire
 * Multi-Stage Audit Cascade:
   1. Batch Authentication: Confirms batch validity and true manufacturing and expiry dates in batch_master.csv.
   2. Duplicate Prevention: Searches expiry_claims.csv for historical records matching (stockist_code, batch_no). If a prior claim has been credited, returns the historical credit note number, credit date, and settled amount.
-  3. Policy Window (proposed from the forum): Uses the claim date and batch-master expiry to derive near-expiry/expired category and screen the inclusive 90-day window on either side. The discussion cites CO-POL-014 §5.2; confirm the PDF clause before operational use.
+  3. Policy Window: Uses the claim date and batch-master expiry to derive Near-expiry or Expired and applies the type-specific periods in CO-POL-014 §5.2. Breakage and Short supply are checked against the original invoice date plus 7 days.
   4. Billing History Reconciliation: Cross-references primary_sales.csv to ensure that claimed quantities do not exceed originally invoiced volumes. For claims lacking invoice references (Policy v4.2 loophole), it audits the stockist's primary billing ledger.
   5. Financial Re-valuation: Multiplies verified physical units by the official PTS rate from sku_master.csv, calculating any over-claim variance against the stockist's requested credit.
 

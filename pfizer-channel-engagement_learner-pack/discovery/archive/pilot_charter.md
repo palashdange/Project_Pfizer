@@ -9,7 +9,7 @@
 
 The supplied records give two concrete signals worth testing with Supply Chain and CFA Operations. First, a subset of FY27 Q1 invoice–batch groups appears below the policy’s 60% remaining-shelf-life threshold. Second, the September 2026 CFA snapshot shows high stock cover at Kolkata alongside many zero-stock SKUs at Lucknow, with Kolkata holding some of those same SKUs.
 
-These signals suggest a useful operational question: **Can teams see and review batch and location risks early enough to prevent avoidable short-dated dispatches or missed availability?** The data does not yet prove that either signal caused returns or stockouts. The pilot should test whether alerts are accurate, actionable, and worth incorporating into the existing review process. [Trade terms and returns policy](../data-pack/02_trade_terms_and_returns_policy.pdf) [CFA stock snapshot](../data-pack/data/cnf_stock_snapshot.csv) [Primary sales extract](../data-pack/data/primary_sales.csv) [Batch master](../data-pack/data/batch_master.csv)
+These signals suggest a useful operational question: **Can teams see and review batch and location risks early enough to prevent avoidable short-dated dispatches or missed availability?** The data does not yet prove that either signal caused returns or stockouts. The pilot should test whether alerts are accurate, actionable, and worth incorporating into the existing review process. [Trade terms and returns policy](../../data-pack/02_trade_terms_and_returns_policy.pdf) [CFA stock snapshot](../../data-pack/data/cnf_stock_snapshot.csv) [Primary sales extract](../../data-pack/data/primary_sales.csv) [Batch master](../../data-pack/data/batch_master.csv)
 
 ## Objective
 
@@ -35,7 +35,7 @@ Names and formal decision rights are assumptions; confirm them before any live o
 4. **Human review.** An assigned Supply Chain or CFA user checks the source records and records a disposition in the team’s existing process (for example: confirmed, not an issue, needs investigation). The pilot itself does not store operational decisions unless separately approved and designed.
 5. **Review outcomes.** Compare alerts to user adjudication, measure review effort, and document data gaps and process changes needed for a broader pilot.
 
-For the prototype, the supplied starter app is a FastAPI/LangGraph skeleton with a batch lookup tool. It currently demonstrates batch lookup, not a risk queue. Any future implementation should put calculations and thresholds in deterministic Python tools; the language model may explain returned evidence but must not invent dates, quantities, or risk flags. The current starter instructions also require tests for business rules. [Starter README](../starter/README.md) [Starter tools](../starter/agent/tools.py) [Starter graph](../starter/agent/graph.py) [Starter agent instructions](../starter/AGENTS.md)
+For the prototype, the supplied starter app is a FastAPI/LangGraph skeleton with a batch lookup tool. It currently demonstrates batch lookup, not a risk queue. Any future implementation should put calculations and thresholds in deterministic Python tools; the language model may explain returned evidence but must not invent dates, quantities, or risk flags. The current starter instructions also require tests for business rules. [Starter README](../../starter/README.md) [Starter tools](../../starter/agent/tools.py) [Starter graph](../../starter/agent/graph.py) [Starter agent instructions](../../starter/AGENTS.md)
 
 ## In-scope checks
 
@@ -80,7 +80,7 @@ Before relying on the output, confirm:
 - stock and outward grain, especially repeated monthly outward across batch rows;
 - whether the observed exception threshold is policy, warning, or informational.
 
-All outputs should retain source traceability. No model-generated value should be treated as a fact unless returned by a deterministic tool. Follow access controls for the source data and the project’s read-only constraint. [Company and channel overview](../data-pack/01_company_and_channel_overview.pdf) [Starter agent instructions](../starter/AGENTS.md)
+All outputs should retain source traceability. No model-generated value should be treated as a fact unless returned by a deterministic tool. Follow access controls for the source data and the project’s read-only constraint. [Company and channel overview](../../data-pack/01_company_and_channel_overview.pdf) [Starter agent instructions](../../starter/AGENTS.md)
 
 ## Measures of success
 

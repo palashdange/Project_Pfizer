@@ -29,7 +29,7 @@ flowchart TB
     end
 
     subgraph CHECKS[Deterministic risk checks]
-        SHELF[Remaining shelf life<br/>below 60% at invoice date proxy]
+        SHELF[Remaining shelf life<br/>below 60% at invoice date]
         IMBALANCE[High stock cover at one CFA<br/>and zero stock at another]
         NEAR[Batch approaching expiry]
     end
@@ -57,11 +57,11 @@ flowchart TB
 - **Reviewers** can see why an alert appeared and verify it before taking it forward.
 - **Current owners** keep control of allocation changes, dispatch decisions, transfers, and approvals. The pilot does not write to ERP or WMS, move stock, or approve actions.
 
-The shelf-life check uses invoice date as a working proxy for dispatch date until Distribution confirms the correct operational field. The stock alert is a review signal, not a transfer recommendation: stockist sell-through is not available in the supplied pack, and CFA stock alone does not establish downstream demand.
+CO-POL-014 §7.1 defines the shelf-life check at invoice date, and the assistant applies that rule. The stock alert is a review signal, not a transfer recommendation: stockist sell-through is not available in the supplied pack, and CFA stock alone does not establish downstream demand.
 
 ## Sources
 
-- [Pilot charter](pilot_charter.md)
+- [Pilot charter](archive/pilot_charter.md)
 - [Business flow](channel_business_flow.md)
 - [Trade terms and returns policy](../data-pack/02_trade_terms_and_returns_policy.pdf)
 - [Company and channel overview](../data-pack/01_company_and_channel_overview.pdf)

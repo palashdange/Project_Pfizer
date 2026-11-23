@@ -1,19 +1,19 @@
 # Weekly channel risk review: workflow and screen requirements
 
 **Status:** Proposed design for the hypothetical case; not yet validated with real process owners  
-**Primary users:** Supply Chain / Demand Planning reviewer and CFA Operations reviewer (roles to confirm)  
+**Primary user:** Head of Supply Chain Kavita Rao; planning partner: Lead Demand Planning Vaishali Kapoor (case roles; not validated with real client personnel)
 **Mode:** Read-only decision support; decisions remain in existing operating processes
 
 ## Purpose
 
-Give a supply-chain reviewer one place to find and investigate two evidence-backed signals: invoice lines that may have shipped below the 60% remaining-shelf-life policy threshold, and SKUs with a zero-stock marker at one CFA while positive batch stock is recorded at another. The screen should help a person decide what to check next. It must not label a signal as a confirmed loss, recommend a transfer, or make an operational change.
+Give the Supply Chain owner one place to investigate CFA–SKU availability gaps and aging-batch signals before the next planning cycle. The screen should help a person decide what to check next. It must not label a signal as a confirmed loss, recommend a transfer, or make an operational change. The largest sized signal is ₹15.33 crore/year after subtracting both invoiced and free packs from ordered packs, valued at PTS. Order status, downstream demand, and contribution margin are not available, so this is not confirmed lost sales or forecast savings. The ₹22.32 crore invoiced-only gap is a separate, overlapping diagnostic and is excluded from additive totals.
 
 This is a proposed weekly job-to-be-done, not proof that the case company already has this process or that a weekly review is the right cadence. Confirm the user, cadence, and actions as part of the hypothetical pilot review.
 
 ## Weekly workflow
 
 1. **Confirm the data cut.** The reviewer sees when each file was extracted, the period it covers, and the date of the latest CFA stock snapshot. If inputs are stale, missing, or outside the agreed review window, the screen says so and marks the review as historical or incomplete.
-2. **Run the deterministic checks.** The system joins sales lines to batch and SKU masters, applies the 60% shelf-life rule using the agreed dispatch-date field, and checks the latest stock snapshot for cross-CFA availability signals. It reports records that cannot be evaluated separately.
+2. **Run the deterministic checks.** The system joins sales lines to batch and SKU masters, applies the 60% RSL rule at invoice date as required by CO-POL-014 §7.1, and checks the latest stock snapshot for cross-CFA availability signals. It reports records that cannot be evaluated separately.
 3. **Triage the exceptions.** The reviewer filters by check type, CFA, SKU, and date, then opens a row to see its source values, calculation, and limitations. Results are ordered by date and identifier; no unapproved financial-risk score is implied.
 4. **Verify in the source process.** The reviewer checks the cited record in the source system and chooses a disposition in the existing process: confirmed, not an issue, needs data correction, or escalated. The prototype does not store decisions or send updates to ERP, WMS, claims, or allocation systems.
 5. **Close the review.** The reviewer records the review date, scope, unresolved items, and follow-up owner using the team's existing method. For pilot evaluation, collect reviewer dispositions and time spent through an approved mechanism; do not add persistence until an owner and retention rules are agreed.
@@ -48,7 +48,7 @@ Use separate tabs or filters for **Shelf-life review** and **CFA stock review** 
 | Field | Display requirement |
 |---|---|
 | Invoice and source reference | Invoice number, source file, and source row; keep the source reference visible without horizontal scrolling where practical |
-| Invoice date / dispatch date | Show the input date and identify whether it is an actual dispatch date or an approved proxy |
+| Invoice date | Show the invoice date used in the §7.1 RSL calculation |
 | Customer and location | Stockist, CFA code, and city when present in the source |
 | Product and batch | SKU, product name when joined, batch number |
 | Quantities | Invoiced quantity and free quantity as separate values |
@@ -82,7 +82,7 @@ Opening a row should show:
 
 | Check | Rule for the pilot | What it supports | What it does not support |
 |---|---|---|---|
-| Shelf-life screen | Compare remaining shelf life at dispatch with 60% of total shelf life, using the agreed policy calculation. Until actual dispatch date is supplied and approved, label invoice date as a proxy. | Finding candidate invoice lines for a source-system/policy check | Confirming a breach, return, destruction, loss, or avoidable value |
+| Shelf-life screen | Compare remaining shelf life on invoice date with 60% of total shelf life as specified by CO-POL-014 §7.1. | Finding candidate invoice lines for review | Confirming a return, destruction, loss, or avoidable value |
 | CFA availability signal | For a SKU, compare explicit zero-stock markers with positive stock tied to a batch at other CFAs on the same snapshot date. Exclude conflicting/ambiguous CFA-SKU records. | Finding locations worth reviewing together | Inferring downstream demand, excess stock, safe/feasible transfer, or lost sales |
 
 The tool must retain the exact source values and source row for each result. If a required value is missing, a join is ambiguous, or a record cannot be evaluated, show that state instead of filling a value by inference.
@@ -100,7 +100,7 @@ Before calling the screen useful for a weekly review:
 1. A user can identify the data period and freshness before interpreting a count.
 2. Every displayed exception can be traced to its source file and row or key.
 3. Counts reconcile to a saved, reproducible calculation over the same filters and period.
-4. Shelf-life dates and percentages match hand-checked records; invoice-date proxy cases are visibly labeled.
+4. Shelf-life dates and percentages match hand-checked records; invoice date is displayed as the §7.1 calculation date.
 5. Ambiguous stock records are excluded or marked for data correction, not silently summed.
 6. The table can display, filter, and paginate the full result set while keeping summary counts stable.
 7. A reviewer can distinguish a candidate signal from a confirmed issue and knows which existing process to use next.
@@ -119,7 +119,7 @@ Do not set alert-precision, time-saving, or financial targets until a baseline a
 
 ## Relationship to existing discovery work
 
-This workflow operationalizes the proposed read-only pilot in [pilot_charter.md](pilot_charter.md). The evidence and limitations are detailed in [business_problem_validation.md](business_problem_validation.md); the wider project gates and outstanding forecast-scope decision are in [implementation_plan.md](implementation_plan.md). The weekly workflow does not resolve whether the case ultimately requires a primary-sales forecast, downstream-demand forecast, or a narrower retrospective risk review.
+This workflow operationalizes the proposed read-only Supply Chain pilot described in [Discovery_note.md](Discovery_note.md). Evidence and limitations are detailed in [business_problem_validation.md](business_problem_validation.md); earlier planning drafts are retained under [archive/](archive/). The primary-sales baseline is supporting context only: absent stockist sell-through and inventory, it is not a downstream-demand forecast or a basis for a savings claim.
 
 
 ## Claims workflow informed by the forum discussion

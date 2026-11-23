@@ -70,7 +70,7 @@ Before adding another business rule:
 
 Implement only after the first four priorities establish the target and evidence. The workflow should show:
 
-The proposed weekly review and screen requirements are in [weekly_review_workflow.md](weekly_review_workflow.md). They describe the candidate read-only workflow; they do not resolve the forecast-scope decision in Priority 0.
+The proposed weekly review and screen requirements are in [weekly_review_workflow.md](../weekly_review_workflow.md). They describe the candidate read-only workflow; they do not resolve the forecast-scope decision in Priority 0.
 
 - one clear input or agreed review period;
 - the result or exception first, including the rule and responsible reviewer;

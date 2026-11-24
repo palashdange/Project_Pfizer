@@ -25,3 +25,12 @@ FOC_CAP_PCT = 3.0  # CO-POL-014 v4.2 §4.4 p.2 (page to verify)
 
 # Time allowed for CFA verification, expressed in working days.
 CFA_VERIFICATION_WINDOW_WORKING_DAYS = 10  # CO-POL-014 v4.2 §5.6 p.4 (page to verify)
+
+# Clause labels shared by the graph's rule checks and their audit evidence.
+TRANSIT_CLAIM_POLICY_CLAUSE = "CO-POL-014 §5.2"
+EXPIRY_CLAIM_POLICY_CLAUSE = "CO-POL-014 §5.2"
+INVOICE_REFERENCE_POLICY_CLAUSE = "CO-POL-014 §5.4"
+CLAIM_QUANTITY_POLICY_CLAUSE = "CO-POL-014 §5.5"
+DUPLICATE_CLAIM_POLICY_CLAUSE = "CO-POL-014 §5.6"
+CLAIM_VALUE_POLICY_CLAUSE = "CO-POL-014 §5.7"
+BATCH_EXPIRY_POLICY_CLAUSE = "CO-POL-014 §5.2"

@@ -44,6 +44,8 @@ button:disabled, input:disabled { cursor: wait; opacity: .7; }
 .answer-card p { margin: 0; line-height: 1.55; }
 .decision-badge { display: inline-flex; align-items: center; border: 1px solid #b9c7d9; border-radius: 999px; padding: 5px 9px; color: #344054; background: #f1f5fa; font-size: 11px; font-weight: 750; letter-spacing: .04em; }
 .decision-badge.review { color: #815208; border-color: #efd28b; background: #fff6dc; }
+.decision-badge.reject { color: #9f2727; border-color: #efb2b2; background: #fff0f0; }
+.decision-badge.recommend { color: #17633c; border-color: #a9d8bc; background: #eaf8ef; }
 .decision-badge.informational { color: #24518a; border-color: #c5d7f2; background: #eef5ff; }
 .evidence-list { display: grid; gap: 12px; }
 .evidence-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; margin: 0; }

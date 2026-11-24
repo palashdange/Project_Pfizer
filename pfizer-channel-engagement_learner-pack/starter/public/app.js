@@ -48,7 +48,7 @@ form.addEventListener("submit", async (e) => {
     document.getElementById("answer").textContent = EvidenceFormatter.answerSummary(data.answer, evidence);
     // Show a carefully named result state; this pilot never turns screening into an approval.
     const decisionBadge = document.getElementById("decision-badge");
-    const badge = EvidenceFormatter.resultBadge(evidence);
+    const badge = EvidenceFormatter.resultBadge(evidence, data.route);
     decisionBadge.hidden = !badge;
     decisionBadge.textContent = badge ? badge.label : "";
     decisionBadge.className = badge ? `decision-badge ${badge.tone}` : "decision-badge";
@@ -62,7 +62,7 @@ form.addEventListener("submit", async (e) => {
       ? JSON.stringify(evidence, null, 2)
       : "No tool was called.";
     output.hidden = false;
-    status.textContent = `${data.model_calls} model call(s)`;
+    status.textContent = `${data.model_calls} model call(s) · ${data.elapsed_seconds ?? "—"} seconds`;
   } catch (err) {
     status.textContent = `Something went wrong: ${err.message}. Check /api/health and the logs.`;
   } finally {

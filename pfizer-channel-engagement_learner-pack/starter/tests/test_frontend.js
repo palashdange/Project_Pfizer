@@ -13,23 +13,18 @@ test("weekly review page exposes read-only status and supported checks", () => {
   assert.match(html, /Read-only decision support/);
   assert.match(html, /No ERP\/WMS write-back/);
   assert.match(html, /Human review required/);
-  assert.match(html, /evidence\.js\?v=10/);
-  assert.match(html, /app\.js\?v=7/);
-  assert.match(html, /Scan shelf-life exceptions/);
-  assert.match(html, /Review CFA stock signals/);
-  assert.match(html, /View shipment baseline/);
-  assert.match(html, /Look up a batch/);
+  assert.match(html, /evidence\.js\?v=11/);
+  assert.match(html, /app\.js\?v=8/);
   assert.match(html, /Review a claim/);
   assert.match(html, /Inspect a claim email/);
   assert.match(html, /Tuesday claims review · scenario replay/);
   assert.match(html, /1\. Commercial Finance · claims triage/);
-  assert.match(html, /2\. Supply Chain · availability and aging signals/);
   assert.match(html, /not a live inbox or pending-claims queue/);
   assert.match(html, /expiry_claims\.csv rows 3269 and 3596/);
   assert.match(html, /claim_emails\.csv row 28/);
   assert.equal((html.match(/class="scenario-action"/g) || []).length, 2);
   assert.match(html, /id="decision-badge"/);
-  assert.equal((html.match(/class="quick-action"/g) || []).length, 6);
+  assert.equal((html.match(/class="quick-action"/g) || []).length, 3);
   assert.match(app, /querySelectorAll\("\[data-question\]"\)/);
   assert.match(app, /button\.dataset\.question/);
   assert.match(app, /form\.requestSubmit\(\)/);
@@ -93,6 +88,23 @@ test("result badges distinguish review states from informational results", () =>
   assert.deepEqual(resultBadge([{ found: true }]), { label: "SOURCE RECORD FOUND", tone: "informational" });
   assert.deepEqual(resultBadge([{ flagged_shipments: [] }]), { label: "SHELF-LIFE SCREENING", tone: "informational" });
   assert.equal(resultBadge([]), null);
+});
+
+test("claims route is shown as the verdict badge and checks render as a cited table", () => {
+  const item = {
+    result_type: "claim_review", claim_no: "CLM-2404-04177", route: "REJECT",
+    checks: { window: {
+      status: "fail", reason: "8 days after invoice", policy_clause: "CO-POL-014 §5.2",
+      evidence_rows: [{ file: "expiry_claims.csv", source_row: 2 }],
+    } },
+  };
+  const html = renderEvidence(item);
+
+  assert.deepEqual(resultBadge([item], "REJECT"), { label: "REJECT", tone: "reject" });
+  assert.match(html, /Claims decision checks/);
+  assert.match(html, /expiry_claims\.csv:2/);
+  assert.match(html, /CO-POL-014 §5\.2/);
+  assert.match(answerSummary("Route explanation.", [item]), /Route explanation/);
 });
 
 test("claim email evidence is displayed as escaped untrusted source text", () => {

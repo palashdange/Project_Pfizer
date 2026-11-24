@@ -374,6 +374,22 @@
     </article>`;
   }
 
+  function renderClaimReview(item) {
+    const checks = item.checks || {};
+    const rows = Object.entries(checks).map(([key, check]) => ({
+      check: labelFor(key),
+      status: scalar(check.status).toUpperCase(),
+      source: (check.evidence_rows || []).map((row) => `${row.file || "—"}:${row.source_row || "—"}`).join(", ") || "—",
+      finding: check.reason || "—",
+      policy: check.policy_clause || "—",
+    }));
+    return `<article class="evidence-card claim-review">
+      <h3>Claim ${escapeHtml(item.claim_no || "not identified")}</h3>
+      <h4>Claims decision checks</h4>
+      ${renderTable(rows, [["check", "Check"], ["status", "Status"], ["source", "Source & row"], ["finding", "Finding"], ["policy", "Policy"]], "No claim checks were run.")}
+    </article>`;
+  }
+
   function renderEvidence(item) {
     if (typeof item === "string") {
       try { item = JSON.parse(item); } catch (_) {
@@ -381,6 +397,7 @@
       }
     }
     if (!item || typeof item !== "object") return `<article class="evidence-card">${escapeHtml(scalar(item))}</article>`;
+    if (item.result_type === "claim_review") return renderClaimReview(item);
     if (item.result_type === "expiry_claim_review") return renderClaim(item);
     if (item.result_type === "claim_email_evidence") return renderClaimEmail(item);
     if (Object.prototype.hasOwnProperty.call(item, "found")) return renderBatch(item);
@@ -392,6 +409,9 @@
 
   function answerSummary(answer, evidence) {
     const item = Array.isArray(evidence) ? evidence[0] : null;
+    if (item && item.result_type === "claim_review") {
+      return answer || `Claim ${item.claim_no || "requested"} was routed ${item.route || "for review"}.`;
+    }
     if (item && item.result_type === "expiry_claim_review") {
       return item.found
         ? `Claim ${item.claim.claim_no} was screened against the supplied claim, batch, invoice, and prior-credit records. Human review is required; this is not an approval or rejection.`
@@ -420,8 +440,12 @@
     return answer || "No answer was returned.";
   }
 
-  function resultBadge(evidence) {
+  function resultBadge(evidence, route) {
     // Labels describe the result type; they are not business approval decisions.
+    if (route === "RECOMMEND_CREDIT") return { label: route.replaceAll("_", " "), tone: "recommend" };
+    if (route === "REJECT") return { label: route, tone: "reject" };
+    if (route === "NOT_FOUND") return { label: "NOT FOUND", tone: "review" };
+    if (route === "NEEDS_PERSON") return { label: "NEEDS PERSON", tone: "review" };
     const item = Array.isArray(evidence) ? evidence.find((entry) => entry && typeof entry === "object") : null;
     if (!item) return null;
     if (item.result_type === "expiry_claim_review") return { label: "NEEDS HUMAN REVIEW", tone: "review" };

@@ -79,4 +79,19 @@ Each entry records the selected direction, the main alternative, the rationale, 
 **Why we chose this:** The checks are independent; each writes its own result with its clause and evidence rows, so a failure is easy to trace and test.
 **Evidence:** Project brief p. 4 ("several independent checks: parallel nodes, one key each"); starter/agent/graph.py; starter/tests/test_graph.py.
 
+**16. Decision:** Send repeats of a pending claim, and near-equal quantities, to a person; reject only an exact repeat of a credited claim.
+**Options considered:** exact credited repeats only (as before) vs. also reject near repeats vs. send near and pending repeats to a person.
+**Why we chose this:** §5.6 says to check for "an earlier claim on the same stockist and batch" without a quantity rule, so a near repeat is a question, not a breach. The 1% / 1-pack tolerance is our pilot threshold, not a policy number: 17 register claims sit within it before the spread widens.
+**Evidence:** CO-POL-014 §5.6 p.4; CLM-2608-02222 → CLM-2609-04449 (expiry_claims.csv rows 4134, 4345); CLM-2505-00789 → CLM-2507-04457 (rows 1489, 1710); config.py; tests/test_rules.py, tests/test_graph.py.
+
+**17. Decision:** Compare pasted claim details with the register in code; any conflict goes to a person.
+**Options considered:** register is the only truth (ignore pasted text) vs. compare and flag.
+**Why we chose this:** A stockist message that disagrees with the register on expiry or value is exactly the case a person should see. The model only reads the text into fields; code drops any value not present in the text and does the comparison. Bare claim IDs make no extra model call.
+**Evidence:** CO-POL-014 §5.3, §5.7; held-out cases holdout_expiry_mismatch_01, holdout_value_mismatch_01; tests/test_graph.py.
+
+**18. Decision:** Batch mode reports "leakage stopped" separately from "credited claims the rules reject", and counts needs-a-person as at risk, not saved.
+**Options considered:** one "caught" total vs. separating the invalid part.
+**Why we chose this:** An over-quantity claim (§5.5) is invalid only for its excess packs; counting the whole claim gives ₹42.0 L/yr instead of ₹19.94 L/yr. The leakage figure reconciles to discovery/sizing.py (₹20.25 L/yr); the small gap is claims the pilot sends to a person because the batch or invoice is missing.
+**Evidence:** starter/agent/batch.py; tests/test_batch.py; discovery/sizing_results.csv.
+
 PDF page references checked against the source PDFs on 24 Nov 2026. Code, Markdown, and CSV references checked directly.

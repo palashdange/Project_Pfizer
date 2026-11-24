@@ -65,9 +65,13 @@ A hand-checked [check set](pfizer-channel-engagement_learner-pack/starter/checks
 |---|---|
 | Starter tool loop (baseline) | 6/16 |
 | Claims workflow graph (current) | **16/16** |
-| Held-out cases, labelled after the build (current) | 3/6 |
+| Held-out cases, labelled after the build | 3/6 at first; 6/6 after two fixes built against them |
 
-The three held-out misses are known gaps, listed in the [architecture note](pfizer-channel-engagement_learner-pack/discovery/architecture_note.md#5-accuracy).
+The first held-out run exposed two gaps (pasted details not compared, pending repeats missed). Both are fixed, so the held-out set is no longer unseen; see the [architecture note](pfizer-channel-engagement_learner-pack/discovery/architecture_note.md#5-accuracy).
+
+## Batch mode: what the pilot would have caught
+
+`POST /api/batch` (and section 2 of the page) runs every register claim, or one month, through the same checks with no model calls. Over 30 months, per year: **₹19.94 L of credited leakage the rules stop** (reconciles to the discovery note's ₹20.25 L), and **₹90.41 L credited without the checks passing**, which goes to a person and is counted as at risk, not saved.
 
 Run it from `pfizer-channel-engagement_learner-pack/starter`:
 
@@ -99,7 +103,7 @@ Deployed on Vercel (Hobby) with root directory `pfizer-channel-engagement_learne
 | `pfizer-channel-engagement_learner-pack/discovery/decision_log.md` | Design choices and why |
 | `pfizer-channel-engagement_learner-pack/discovery/sizing.py` | Reproduces every ₹ figure (writes `sizing_results.csv`) |
 | `pfizer-channel-engagement_learner-pack/starter/` | The app: FastAPI, LangGraph graph, frontend |
-| `pfizer-channel-engagement_learner-pack/starter/agent/` | `graph.py`, `rules.py`, `data.py`, `prompts.py`, `llm.py` |
+| `pfizer-channel-engagement_learner-pack/starter/agent/` | `graph.py`, `batch.py`, `rules.py`, `data.py`, `prompts.py`, `llm.py` |
 | `pfizer-channel-engagement_learner-pack/starter/tests/` | Tests for rules, data, graph and API |
 | `pfizer-channel-engagement_learner-pack/starter/checks/` | Check set and runner |
 | `pfizer-channel-engagement_learner-pack/data-pack/` | The client documents, CSV extracts and voice notes |

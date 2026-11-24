@@ -131,3 +131,16 @@ def test_provider_failure_during_explain_keeps_code_route_and_uses_fallback(monk
     assert result["route"] == "REJECT"
     assert result["explanation"].startswith("Route: REJECT.")
     assert "duplicate" in result["explanation"]
+
+
+def test_explanation_cannot_present_the_route_as_an_action_already_taken(monkeypatch):
+    monkeypatch.setattr(
+        graph_module, "get_llm",
+        lambda: ExplainOnlyLLM("The claim has been rejected. A duplicate was found. A person remains responsible for any final action."),
+    )
+
+    result = graph_module.run_question("Review CLM-2605-04488")
+
+    assert result["route"] == "REJECT"
+    assert "has been rejected" not in result["explanation"]
+    assert result["explanation"].startswith("Route: REJECT.")

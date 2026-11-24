@@ -422,9 +422,14 @@ def explain(state: State) -> dict:
         explanation = str(reply.content).strip()
         allowed_numbers = set(re.findall(r"\d+(?:[.,]\d+)*", json.dumps(checks, ensure_ascii=False, default=str)))
         used_numbers = set(re.findall(r"\d+(?:[.,]\d+)*", explanation))
-        # Keep the model from presenting a recommendation as an executed approval.
+        # Keep the model from presenting a recommendation as an executed approval or action.
         unsafe_decision_text = bool(
-            re.search(r"\b(approve|approved|recommend(?:ed)? credit|credit this claim)\b", explanation, re.IGNORECASE)
+            re.search(
+                r"\b(approve|approved|recommend(?:ed)? credit|credit this claim)\b"
+                r"|\b(?:has|have) been (?:rejected|credited|approved|paid|settled)\b"
+                r"|\bwas (?:rejected|credited|approved|paid|settled)\b",
+                explanation, re.IGNORECASE,
+            )
         )
         sentences = [part for part in re.split(r"(?<=[.!?])\s+", explanation) if part]
         if not 3 <= len(sentences) <= 5 or not used_numbers.issubset(allowed_numbers) or unsafe_decision_text:

@@ -24,7 +24,7 @@ Rank 1 is the largest modeled expiry-target gap; it is not proven recoverable an
 
 ## 3. Forecast verdict
 
-**A new forecast tool has no demonstrated direct recovery here; the intervention areas are scheme loading, CFA allocation, and claim controls.** Vaishali says the forecast is national and the allocation sheet splits it, so the ₹15.33 cr gap is not itself forecast error ([interviews, p. 3](../data-pack/04_stakeholder_interview_notes.pdf)). **0% of quantified recoverable rupees is demonstrated as forecast-addressable**; the expiry gap is a monitor, not a forecast benefit estimate.
+**A new forecast tool has no demonstrated direct recovery here; the intervention areas are scheme loading, CFA allocation, and claim controls.** Vaishali says the forecast is national and the allocation sheet splits it, so the ₹15.33 cr gap is not itself forecast error ([interviews, p. 3](../data-pack/04_stakeholder_interview_notes.pdf)). **0% of quantified recoverable rupees is demonstrated as forecast-addressable**; the expiry gap is a monitor, not a forecast benefit estimate. Why the problems happen, read against the D&C Act, Drugs Rules, CGST §34 and DPCO 2013: [research note](research_note.md).
 
 ## 4. Pilot user and plan for the money
 

@@ -6,7 +6,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from sizing import _clean_file, calculate_sizing, fiscal_quarter, normalize_code, parse_mixed_dates
+from sizing import (_clean_file, calculate_gst_credit_note_timing, calculate_sizing, fiscal_quarter,
+                    normalize_code, parse_mixed_dates)
 
 
 def _dates(frame: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
@@ -150,3 +151,36 @@ class SizingCalculationsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class GstCreditNoteTimingTest(unittest.TestCase):
+    def test_credit_note_on_or_before_30_nov_after_invoice_fy_is_not_late(self):
+        # Invoice in FY25 (Jun 2024) -> window ends 30 Nov 2025; a Mar 2025 invoice also ends 30 Nov 2025.
+        sales = pd.DataFrame({
+            "invoice_no": ["INV/1", "INV/2", "INV/3"],
+            "invoice_date": pd.to_datetime(["2024-06-10", "2025-03-31", "2025-04-01"]),
+            "ordered_qty": [1, 1, 1], "invoiced_qty": [1, 1, 1], "free_qty": [0, 0, 0],
+            "pts_inr": [1, 1, 1], "net_value_inr": [1, 1, 1],
+        })
+        claims = pd.DataFrame({
+            "claim_no": ["C1", "C2", "C3", "C4"],
+            "claim_date": pd.to_datetime(["2025-10-01", "2025-11-01", "2025-11-15", "2026-01-01"]),
+            "claim_type": ["Expired", "Expired", "Near expiry", "Short supply"],
+            "status": ["Credited", "Credited", "Credited", "Pending"],
+            "original_invoice_ref": ["INV/1", "inv/2 ", "INV/3", "INV/1"],
+            "credit_note_date": pd.to_datetime(["2025-11-30", "2025-12-01", "2025-12-01", "2026-02-01"]),
+            "qty_claimed": [1, 1, 1, 1], "claim_value_inr": [100, 200, 300, 400],
+            "credit_value_inr": [100, 200, 300, 400],
+            "_source_row": [2, 3, 4, 5],
+        })
+        frames = {"primary_sales.csv": sales, "expiry_claims.csv": claims,
+                  "sku_master.csv": pd.DataFrame({"pts_inr": [1]})}
+
+        row, by_type = calculate_gst_credit_note_timing(frames)
+
+        # C1 is on the deadline (not late); C2 is one day after (late); C3's invoice is FY26 (not late); C4 is not credited.
+        self.assertIn("1 of 3 credited claims", row["method"])
+        self.assertIn("₹200.00 of ₹600.00", row["method"])
+        self.assertEqual(row["policy_clause"], "CGST Act 2017 §34(2); CO-POL-014 §5.7")
+        expired = by_type[by_type["claim_type"].eq("Expired")].iloc[0]
+        self.assertEqual((expired["credited"], expired["late"]), (2, 1))

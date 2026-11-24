@@ -722,6 +722,50 @@ def calculate_sizing(frames: dict[str, pd.DataFrame]) -> tuple[pd.DataFrame, dic
     return results, summary
 
 
+def calculate_gst_credit_note_timing(frames: dict[str, pd.DataFrame], *, deadline_month: int = 11,
+                                     deadline_day: int = 30) -> tuple[dict[str, Any], pd.DataFrame]:
+    """Credited claims whose credit note is dated after the CGST §34(2) window of the original invoice.
+
+    The window ends on `deadline_day`/`deadline_month` following the 31 March that closes the
+    invoice's financial year (30 November in the text as amended by the Finance Act 2022, which
+    could not be read at source; pass month 9, day 30 for the as-enacted September limit).
+    """
+    data = _prepare(frames)
+    claims = data["expiry_claims.csv"]
+    sales = data["primary_sales.csv"]
+    credited = claims[claims["status"].astype("string").str.strip().str.upper().eq("CREDITED")].copy()
+    credited["_ref"] = credited["original_invoice_ref"].astype("string").str.strip().str.upper()
+    first_invoice = (sales.assign(_ref=sales["invoice_no"].astype("string").str.strip().str.upper())
+                     .dropna(subset=["invoice_date"]).drop_duplicates("_ref")[["_ref", "invoice_date"]])
+    joined = credited.merge(first_invoice, on="_ref", how="inner")
+    joined = joined.dropna(subset=["credit_note_date"])
+    fy_end_year = joined["invoice_date"].dt.year + (joined["invoice_date"].dt.month > 3).astype(int)
+    deadline = pd.to_datetime(dict(year=fy_end_year, month=deadline_month, day=deadline_day))
+    joined["_late"] = joined["credit_note_date"] > deadline
+    late = joined[joined["_late"]]
+    months = _months(claims, "claim_date")
+    total = float(joined["credit_value_inr"].sum())
+    late_value = float(late["credit_value_inr"].sum())
+    by_type = (joined.groupby("claim_type")
+               .apply(lambda g: pd.Series({
+                   "credited": len(g), "late": int(g["_late"].sum()),
+                   "late_value_share_pct": round(float(g.loc[g["_late"], "credit_value_inr"].sum() / g["credit_value_inr"].sum() * 100), 1)
+                   if g["credit_value_inr"].sum() else 0.0}), include_groups=False)
+               .reset_index())
+    row = {
+        "problem": "Credit notes issued after the CGST §34(2) window (GST may not be reversible; not sized)",
+        "inr_value": round(late_value * 12 / months, 2) if months else 0.0,
+        "period": f"Annualized run-rate ({months} observed months)",
+        "method": (f"{len(late)} of {len(joined)} credited claims with a matched invoice reference have credit_note_date after "
+                   f"{deadline_day:02d}-{deadline_month:02d} following the invoice FY end; late credit value ₹{late_value:,.2f} "
+                   f"of ₹{total:,.2f} ({late_value / total * 100:.1f}%) ÷ {months} months × 12. Credited value, not GST amount."),
+        "source_rows_example": _examples(late.sort_values("credit_value_inr", ascending=False), "expiry_claims.csv", extra="claim_no"),
+        "policy_clause": "CGST Act 2017 §34(2); CO-POL-014 §5.7",
+        "forecast_fixes": "no — timing follows shelf life and claim filing, not the forecast.",
+    }
+    return row, by_type
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-dir", type=Path, default=DEFAULT_DATA_DIR,
@@ -732,6 +776,8 @@ def main() -> None:
 
     frames = load_data(args.data_dir)
     results, summary = calculate_sizing(frames)
+    gst_row, gst_by_type = calculate_gst_credit_note_timing(frames)
+    results = pd.concat([results, pd.DataFrame([gst_row], columns=RESULT_COLUMNS)], ignore_index=True)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     results.to_csv(args.output, index=False)
 
@@ -758,6 +804,9 @@ def main() -> None:
     print("\nQBR reconciliation checks (case-pack figures, Q1 FY27):")
     print(f"  FOC / primary sales from extracts: {summary['fy27_q1_free_goods_pct']:.2f}% (QBR: 3.69%)")
     print(f"  Invoice quantity / ordered quantity: {summary['fy27_q1_fill_rate_by_sizing_method_pct']:.2f}%; including free packs: {summary['fy27_q1_fill_rate_including_free_pct']:.2f}% (QBR: 90.9%). Including free packs nearly reconciles; confirm the official numerator/denominator and whether free packs count as fulfillment.")
+    print("\nCredit notes after the CGST §34(2) window (30 Nov after invoice FY end), by claim type:")
+    print(gst_by_type.to_string(index=False))
+    print(f"  {gst_row['method']}")
     print(f"\nWrote {len(results):,} rows to {args.output}")
 
 

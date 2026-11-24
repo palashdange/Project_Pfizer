@@ -13,6 +13,7 @@ from config import (
     MIN_REMAINING_SHELF_LIFE_PCT,
 )
 from agent.rules import (
+    classify_prior_claim,
     assess_transit_claim_window,
     assess_expiry_claim_window,
     claim_value_at_pts,
@@ -205,3 +206,21 @@ def test_claim_amount_comparison_checks_below_at_and_above_pts_value(claimed, ex
 
     assert result["status"] == expected
     assert result["policy_reference"] == "CO-POL-014 §5.7"
+
+
+def test_prior_claim_exact_repeat_of_credited_vs_pending():
+    assert classify_prior_claim(Decimal("272"), Decimal("272"), "Credited") == "repeat_of_credited"
+    assert classify_prior_claim(Decimal("547"), Decimal("547"), "Pending") == "repeat_of_pending"
+    # A credited row without a credit note number has not moved money yet: treat like pending.
+    assert classify_prior_claim(Decimal("10"), Decimal("10"), "Credited", prior_has_credit_note=False) == "repeat_of_pending"
+    assert classify_prior_claim(Decimal("10"), Decimal("10"), "Rejected") is None
+
+
+def test_near_repeat_tolerance_is_one_percent_or_one_pack_whichever_is_larger():
+    # 1 pack always counts (small claims): 50 vs 51 is 2% but only 1 pack.
+    assert classify_prior_claim(Decimal("50"), Decimal("51"), "Credited") == "near_repeat"
+    assert classify_prior_claim(Decimal("50"), Decimal("52"), "Credited") is None
+    # 1% of 500 = 5 packs: at 5 it counts, at 6 it does not.
+    assert classify_prior_claim(Decimal("500"), Decimal("495"), "Credited") == "near_repeat"
+    assert classify_prior_claim(Decimal("500"), Decimal("494"), "Credited") is None
+    assert classify_prior_claim(Decimal("370"), Decimal("371"), "Credited") == "near_repeat"

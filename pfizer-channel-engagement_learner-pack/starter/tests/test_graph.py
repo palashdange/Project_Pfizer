@@ -144,3 +144,34 @@ def test_explanation_cannot_present_the_route_as_an_action_already_taken(monkeyp
     assert result["route"] == "REJECT"
     assert "has been rejected" not in result["explanation"]
     assert result["explanation"].startswith("Route: REJECT.")
+
+
+def test_repeat_of_pending_claim_is_sent_to_a_person(monkeypatch):
+    # CLM-2609-04449 repeats pending CLM-2608-02222: same stockist, batch and 547 packs (held-out case).
+    monkeypatch.setattr(graph_module, "get_llm", lambda: ExplainOnlyLLM())
+
+    result = graph_module.run_question("Review CLM-2609-04449")
+
+    assert result["route"] == "NEEDS_PERSON"
+    assert result["checks"]["duplicate"]["status"] == "review"
+    assert result["checks"]["duplicate"]["matched_claims"] == ["CLM-2608-02222"]
+
+
+def test_near_equal_repeat_of_credited_claim_is_sent_to_a_person(monkeypatch):
+    # CLM-2507-04457 (370 packs) follows credited CLM-2505-00789 (371 packs) on the same stockist and batch.
+    monkeypatch.setattr(graph_module, "get_llm", lambda: ExplainOnlyLLM())
+
+    result = graph_module.run_question("Review CLM-2507-04457")
+
+    assert result["route"] == "NEEDS_PERSON"
+    assert result["checks"]["duplicate"]["status"] == "review"
+    assert "CLM-2505-00789" in result["checks"]["duplicate"]["matched_claims"]
+
+
+def test_exact_repeat_of_credited_claim_is_still_rejected(monkeypatch):
+    monkeypatch.setattr(graph_module, "get_llm", lambda: ExplainOnlyLLM())
+
+    result = graph_module.run_question("Review CLM-2605-04488")
+
+    assert result["route"] == "REJECT"
+    assert result["checks"]["duplicate"]["status"] == "fail"

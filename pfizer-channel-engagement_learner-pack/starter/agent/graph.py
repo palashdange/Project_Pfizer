@@ -16,6 +16,7 @@ from agent.prompts import EXPLAIN_SYSTEM_PROMPT, PARSE_INPUT_SYSTEM_PROMPT
 from agent.rules import (
     assess_expiry_claim_window,
     assess_transit_claim_window,
+    classify_prior_claim,
     compare_claim_value_at_pts,
     compare_claim_quantity,
     parse_date,
@@ -212,7 +213,7 @@ def lookup(state: State) -> dict:
     invoice_rows = [
         row for row in sales_rows if row.get("invoice_no", "").strip().upper() == invoice_ref
     ] if invoice_ref else []
-    credited = data.credited_claims_for(
+    same_batch_claims = data.claims_for(
         claim.get("stockist_code", ""), claim.get("batch_no", "")
     ) or []
     return {
@@ -223,7 +224,7 @@ def lookup(state: State) -> dict:
             "stockist": stockist,
             "sales_rows": sales_rows,
             "invoice_rows": invoice_rows,
-            "credited_claims": credited,
+            "same_batch_claims": same_batch_claims,
             "email": state.get("records", {}).get("email"),
         },
         "route": "",
@@ -286,26 +287,53 @@ def check_quantity(state: State) -> dict:
 
 
 def check_duplicate(state: State) -> dict:
-    """Flag a prior credited claim on the same stockist/batch and same quantity."""
+    """Check earlier claims on the same stockist and batch (§5.6).
+
+    An exact repeat of a credited claim fails (REJECT). A repeat of a pending claim, or a quantity
+    within the configured near-repeat tolerance, needs a person ("review").
+    """
     records = state["records"]
     claim = records["claim"]
     try:
         current_date = parse_date(claim.get("claim_date", ""))
         current_qty = parse_pack_quantity(claim.get("qty_claimed", ""))
-        prior = []
-        for item in records["credited_claims"]:
+        current_row = claim.get("source_row") or 0
+        found: dict[str, list[dict]] = {"repeat_of_credited": [], "repeat_of_pending": [], "near_repeat": []}
+        for item in records["same_batch_claims"]:
             if item.get("claim_no") == claim.get("claim_no"):
                 continue
-            if parse_pack_quantity(item.get("qty_claimed", "")) != current_qty:
+            try:
+                item_date = parse_date(item.get("claim_date", ""))
+                item_qty = parse_pack_quantity(item.get("qty_claimed", ""))
+            except ValueError:
                 continue
-            if parse_date(item.get("claim_date", "")) < current_date:
-                prior.append(item)
-        result = _check(
-            "fail" if prior else "pass",
-            f"Found {len(prior)} earlier credited claim(s) with the same stockist, batch, and quantity." if prior else "No earlier credited claim matches stockist, batch, and quantity.",
-            DUPLICATE_CLAIM_POLICY_CLAUSE,
-            [claim, *prior],
-        )
+            # Only claims filed before this one; same-day claims count if they appear earlier in the register.
+            if item_date > current_date or (item_date == current_date and (item.get("source_row") or 0) >= current_row):
+                continue
+            kind = classify_prior_claim(
+                current_qty, item_qty, item.get("status", ""), bool((item.get("credit_note_no") or "").strip())
+            )
+            if kind:
+                found[kind].append(item)
+        labels = {
+            "repeat_of_credited": "earlier credited claim with the same quantity",
+            "repeat_of_pending": "earlier unsettled claim with the same quantity",
+            "near_repeat": "earlier claim with a near-equal quantity",
+        }
+        parts = [
+            f"{labels[kind]}: " + ", ".join(f"{i.get('claim_no')} ({i.get('qty_claimed')} packs, {i.get('status')})" for i in items)
+            for kind, items in found.items() if items
+        ]
+        if found["repeat_of_credited"]:
+            status = "fail"
+        elif found["repeat_of_pending"] or found["near_repeat"]:
+            status = "review"
+        else:
+            status = "pass"
+        reason = ("Same stockist and batch — " + "; ".join(parts) + "." + (" A person must check whether this is the same stock." if status == "review" else "")
+                  if parts else "No earlier claim on this stockist and batch repeats this quantity.")
+        prior = [i for items in found.values() for i in items]
+        result = _check(status, reason, DUPLICATE_CLAIM_POLICY_CLAUSE, [claim, *prior])
         result["matched_claims"] = [item.get("claim_no") for item in prior]
     except ValueError as exc:
         result = _check("missing", str(exc), DUPLICATE_CLAIM_POLICY_CLAUSE, [claim])
@@ -376,7 +404,7 @@ def decide(state: State) -> dict:
         route = "REJECT"
     elif state.get("email_id"):
         route = "NEEDS_PERSON"
-    elif any(checks.get(key, {}).get("status") in {"missing", "fail"} for key in checks):
+    elif any(checks.get(key, {}).get("status") in {"missing", "fail", "review"} for key in checks):
         route = "NEEDS_PERSON"
     else:
         route = "RECOMMEND_CREDIT"
@@ -401,7 +429,7 @@ def decide(state: State) -> dict:
 def _fallback_explanation(route: str, checks: dict) -> str:
     """Summarize only values already present in checks when model explanation fails."""
     failed = [f"{name}: {item.get('reason', 'review needed')} ({item.get('policy_clause', 'no clause')})"
-              for name, item in checks.items() if item.get("status") in {"fail", "missing"}]
+              for name, item in checks.items() if item.get("status") in {"fail", "missing", "review"}]
     passed = [name for name, item in checks.items() if item.get("status") == "pass"]
     first = f"Route: {route}."
     second = "Checks needing attention: " + ("; ".join(failed) if failed else "none") + "."

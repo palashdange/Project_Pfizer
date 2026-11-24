@@ -150,6 +150,17 @@ def credited_claims_for(stockist: str, batch: str, data_dir: Path = DATA_DIR) ->
     return matches or None
 
 
+def claims_for(stockist: str, batch: str, data_dir: Path = DATA_DIR) -> Optional[list[SourceRow]]:
+    """Find every claim row, in any status, for a stockist/batch, or None if there are none."""
+    stockist_code = stockist.strip().upper() if isinstance(stockist, str) else ""
+    batch_code = batch.strip().upper() if isinstance(batch, str) else ""
+    matches = [
+        row for row in (rows_for("claim", data_dir) or ())
+        if row.get("stockist_code") == stockist_code and row.get("batch_no") == batch_code
+    ]
+    return matches or None
+
+
 def get_email(email_id: str, data_dir: Path = DATA_DIR) -> Optional[SourceRow]:
     """Find one claim-email record by email ID."""
     return _find("email", "email_id", email_id, data_dir)

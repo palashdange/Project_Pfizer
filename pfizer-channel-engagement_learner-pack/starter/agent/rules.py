@@ -3,9 +3,12 @@
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 import re
+from typing import Optional
 
 from config import (
     BREAKAGE_SHORT_SUPPLY_WINDOW_DAYS,
+    DUPLICATE_NEAR_QTY_MIN_PACKS,
+    DUPLICATE_NEAR_QTY_TOLERANCE_PCT,
     EXPIRY_CLAIM_WINDOW_DAYS as CLAIM_SUBMISSION_WINDOW_DAYS,
     FOC_CAP_PCT,
     MIN_REMAINING_SHELF_LIFE_DAYS,
@@ -153,6 +156,29 @@ def compare_claim_quantity(claimed_qty: str, recorded_qty: str) -> dict:
         "claimed_quantity": int(claimed) if claimed == claimed.to_integral_value() else str(claimed),
         "recorded_quantity": int(recorded) if recorded == recorded.to_integral_value() else str(recorded),
     }
+
+
+def classify_prior_claim(current_qty: Decimal, prior_qty: Decimal, prior_status: str,
+                         prior_has_credit_note: bool = True) -> Optional[str]:
+    """Classify an earlier claim on the same stockist and batch (CO-POL-014 §5.6).
+
+    Returns "repeat_of_credited" (same packs already credited), "repeat_of_pending" (same packs,
+    earlier claim not yet settled), "near_repeat" (within the configured tolerance), or None.
+    Rejected earlier claims moved no money and are ignored.
+    """
+    status = (prior_status or "").strip().casefold()
+    if status not in {"credited", "pending"}:
+        return None
+    difference = abs(current_qty - prior_qty)
+    if difference == 0:
+        if status == "credited" and prior_has_credit_note:
+            return "repeat_of_credited"
+        return "repeat_of_pending"
+    tolerance = max(
+        Decimal(str(DUPLICATE_NEAR_QTY_MIN_PACKS)),
+        current_qty * Decimal(str(DUPLICATE_NEAR_QTY_TOLERANCE_PCT)) / Decimal("100"),
+    )
+    return "near_repeat" if difference <= tolerance else None
 
 
 def shift_month(month: date, offset: int) -> date:

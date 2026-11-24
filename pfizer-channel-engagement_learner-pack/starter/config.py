@@ -25,6 +25,12 @@ FOC_CAP_PCT = 3.0  # CO-POL-014 v4.2 §4.4 p.2
 # Time allowed for CFA verification, expressed in working days.
 CFA_VERIFICATION_WINDOW_WORKING_DAYS = 10  # CO-POL-014 v4.2 §5.6 p.4
 
+# Near-repeat claim screen. A PILOT DESIGN CHOICE, not a CO-POL-014 number: §5.6 p.4 only says to
+# check for an earlier claim on the same stockist and batch. Chosen from the register: 17 claims sit
+# within 1% or 1 pack of an earlier claim on the same stockist/batch before the spread widens.
+DUPLICATE_NEAR_QTY_TOLERANCE_PCT = 1.0
+DUPLICATE_NEAR_QTY_MIN_PACKS = 1
+
 # Clause labels shared by the graph's rule checks and their audit evidence.
 TRANSIT_CLAIM_POLICY_CLAUSE = "CO-POL-014 §5.2"
 EXPIRY_CLAIM_POLICY_CLAUSE = "CO-POL-014 §5.2"

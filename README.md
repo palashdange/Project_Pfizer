@@ -6,8 +6,8 @@ A pilot for the **Commercial Finance claims team** in a fictional pharma trade c
 
 ## Live demo
 
-- App: **<LIVE_URL>**
-- Health check: **<LIVE_URL>/api/health**
+- App: **https://project-pfizer.vercel.app/**
+- Health check: **https://project-pfizer.vercel.app//api/health**
 
 Try these inputs:
 

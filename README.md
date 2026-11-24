@@ -7,7 +7,7 @@ A pilot for the **Commercial Finance claims team** in a fictional pharma trade c
 ## Live demo
 
 - App: **https://project-pfizer.vercel.app/**
-- Health check: **https://project-pfizer.vercel.app//api/health**
+- Health check: **https://project-pfizer.vercel.app/api/health**
 
 Try these inputs:
 
@@ -65,6 +65,9 @@ A hand-checked [check set](pfizer-channel-engagement_learner-pack/starter/checks
 |---|---|
 | Starter tool loop (baseline) | 6/16 |
 | Claims workflow graph (current) | **16/16** |
+| Held-out cases, labelled after the build (current) | 3/6 |
+
+The three held-out misses are known gaps, listed in the [architecture note](pfizer-channel-engagement_learner-pack/discovery/architecture_note.md#5-accuracy).
 
 Run it from `pfizer-channel-engagement_learner-pack/starter`:
 

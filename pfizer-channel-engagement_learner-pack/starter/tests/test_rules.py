@@ -1,16 +1,41 @@
-from datetime import date
+from datetime import date, timedelta
+from decimal import Decimal
 
 import pytest
 
+from config import (
+    BREAKAGE_SHORT_SUPPLY_WINDOW_DAYS,
+    CFA_VERIFICATION_WINDOW_WORKING_DAYS,
+    CREDIT_NOTE_SLA_DAYS,
+    EXPIRY_CLAIM_WINDOW_DAYS,
+    FOC_CAP_PCT,
+    MIN_REMAINING_SHELF_LIFE_DAYS,
+    MIN_REMAINING_SHELF_LIFE_PCT,
+)
 from agent.rules import (
+    assess_transit_claim_window,
     assess_expiry_claim_window,
+    claim_value_at_pts,
+    compare_claim_value_at_pts,
     compare_claim_quantity,
+    free_goods_cap_check,
+    is_below_min_days_to_expiry,
     is_below_minimum_shelf_life,
     normalize_cfa_code,
     parse_pack_quantity,
     remaining_shelf_life_percent,
     shift_month,
 )
+
+
+def test_central_policy_values_match_the_case_rules():
+    assert MIN_REMAINING_SHELF_LIFE_PCT == 60.0
+    assert MIN_REMAINING_SHELF_LIFE_DAYS == 60
+    assert EXPIRY_CLAIM_WINDOW_DAYS == 90
+    assert BREAKAGE_SHORT_SUPPLY_WINDOW_DAYS == 7
+    assert CREDIT_NOTE_SLA_DAYS == 30
+    assert FOC_CAP_PCT == 3.0
+    assert CFA_VERIFICATION_WINDOW_WORKING_DAYS == 10
 
 
 def test_exactly_sixty_percent_is_not_below_threshold():
@@ -129,3 +154,54 @@ def test_claim_quantity_comparison_reports_overage_without_rounding():
         "claimed_quantity": 11,
         "recorded_quantity": 10,
     }
+
+
+@pytest.mark.parametrize(
+    ("elapsed", "expected"),
+    [(6, "within_window"), (7, "within_window"), (8, "outside_window")],
+)
+def test_transit_claim_window_checks_below_at_and_above_seven_days(elapsed, expected):
+    result = assess_transit_claim_window(
+        date(2026, 4, 1) + timedelta(days=elapsed),
+        date(2026, 4, 1),
+    )
+
+    assert result["status"] == expected
+    assert result["limit_days"] == BREAKAGE_SHORT_SUPPLY_WINDOW_DAYS
+    assert result["elapsed_days"] == elapsed
+
+
+@pytest.mark.parametrize(
+    ("days_left", "expected"), [(59, True), (60, False), (61, False)]
+)
+def test_minimum_days_to_expiry_checks_below_at_and_above_sixty(days_left, expected):
+    invoice_date = date(2026, 1, 1)
+
+    assert is_below_min_days_to_expiry(
+        invoice_date, invoice_date + timedelta(days=days_left)
+    ) is expected
+
+
+@pytest.mark.parametrize(
+    ("free_value", "expected"), [("299", "within_cap"), ("300", "within_cap"), ("301", "above_cap")]
+)
+def test_free_goods_cap_checks_below_at_and_above_three_percent(free_value, expected):
+    result = free_goods_cap_check(free_value, "10000")
+
+    assert result["status"] == expected
+    assert result["cap_value"] == 300
+
+
+def test_claim_value_at_pts_uses_decimal_arithmetic():
+    assert claim_value_at_pts("2", "10.25") == Decimal("20.50")
+
+
+@pytest.mark.parametrize(
+    ("claimed", "expected"),
+    [("19.99", "mismatch_needs_person"), ("20", "match"), ("20.01", "mismatch_needs_person")],
+)
+def test_claim_amount_comparison_checks_below_at_and_above_pts_value(claimed, expected):
+    result = compare_claim_value_at_pts("2", "10", claimed)
+
+    assert result["status"] == expected
+    assert result["policy_reference"] == "CO-POL-014 §5.7"

@@ -4,8 +4,13 @@ from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 import re
 
-MIN_REMAINING_SHELF_LIFE_PCT = 60.0
-CLAIM_SUBMISSION_WINDOW_DAYS = 90
+from config import (
+    BREAKAGE_SHORT_SUPPLY_WINDOW_DAYS,
+    EXPIRY_CLAIM_WINDOW_DAYS as CLAIM_SUBMISSION_WINDOW_DAYS,
+    FOC_CAP_PCT,
+    MIN_REMAINING_SHELF_LIFE_DAYS,
+    MIN_REMAINING_SHELF_LIFE_PCT,
+)
 
 
 def assess_expiry_claim_window(
@@ -46,6 +51,96 @@ def assess_expiry_claim_window(
             if within_window
             else "Outside the configured window based on the batch-master expiry date"
         ),
+    }
+
+
+def assess_transit_claim_window(
+    claim_date: str | date,
+    invoice_date: str | date,
+    limit_days: int = BREAKAGE_SHORT_SUPPLY_WINDOW_DAYS,
+) -> dict:
+    """Check that a transit breakage or short-supply claim is filed within 7 days."""
+    if not isinstance(limit_days, int) or isinstance(limit_days, bool) or limit_days < 0:
+        raise ValueError("limit_days must be a non-negative integer")
+    claim_day = parse_date(claim_date)
+    invoice_day = parse_date(invoice_date)
+    elapsed_days = (claim_day - invoice_day).days
+    within_window = 0 <= elapsed_days <= limit_days
+    return {
+        "status": "within_window" if within_window else "outside_window",
+        "elapsed_days": elapsed_days,
+        "limit_days": limit_days,
+        "reason": (
+            "Filed within the configured number of days after invoice"
+            if within_window
+            else "Filed before invoice or after the configured filing window"
+        ),
+    }
+
+
+def is_below_min_days_to_expiry(
+    invoice_date: str | date,
+    expiry_date: str | date,
+) -> bool:
+    """Return True when fewer than the configured 60 days remain on invoice date."""
+    remaining_days = (parse_date(expiry_date) - parse_date(invoice_date)).days
+    return remaining_days < MIN_REMAINING_SHELF_LIFE_DAYS
+
+
+def _parse_nonnegative_amount(value: str | int | float | Decimal, label: str) -> Decimal:
+    """Parse money inputs without binary float arithmetic or negative values."""
+    try:
+        amount = Decimal(str(value).replace(",", "").strip())
+    except (InvalidOperation, AttributeError) as exc:
+        raise ValueError(f"{label} must be a valid amount") from exc
+    if not amount.is_finite() or amount < 0:
+        raise ValueError(f"{label} must be finite and non-negative")
+    return amount
+
+
+def free_goods_cap_check(
+    free_value: str | int | float | Decimal,
+    invoiced_value: str | int | float | Decimal,
+) -> dict:
+    """Compare free-goods value with the configured 3% of invoiced value cap."""
+    free_amount = _parse_nonnegative_amount(free_value, "free_value")
+    invoice_amount = _parse_nonnegative_amount(invoiced_value, "invoiced_value")
+    cap_amount = invoice_amount * Decimal(str(FOC_CAP_PCT)) / Decimal("100")
+    excess = max(Decimal("0"), free_amount - cap_amount)
+    return {
+        "status": "above_cap" if excess > 0 else "within_cap",
+        "free_value": free_amount,
+        "invoiced_value": invoice_amount,
+        "cap_pct": FOC_CAP_PCT,
+        "cap_value": cap_amount,
+        "excess_value": excess,
+    }
+
+
+def claim_value_at_pts(
+    qty: str | int | float | Decimal,
+    pts: str | int | float | Decimal,
+) -> Decimal:
+    """Calculate claim value at PTS using exact decimal pack and price values."""
+    quantity = _parse_nonnegative_amount(qty, "qty")
+    price = _parse_nonnegative_amount(pts, "pts")
+    return quantity * price
+
+
+def compare_claim_value_at_pts(
+    qty: str | int | float | Decimal,
+    pts: str | int | float | Decimal,
+    claim_value: str | int | float | Decimal,
+) -> dict:
+    """Flag PTS-value mismatches for human review; never decide claim entitlement."""
+    calculated = claim_value_at_pts(qty, pts)
+    claimed = _parse_nonnegative_amount(claim_value, "claim_value")
+    return {
+        "status": "match" if claimed == calculated else "mismatch_needs_person",
+        "calculated_value_inr": calculated,
+        "claim_value_inr": claimed,
+        "variance_inr": claimed - calculated,
+        "policy_reference": "CO-POL-014 §5.7",
     }
 
 

@@ -53,6 +53,18 @@ def test_claim_audit_matches_invoice_and_checks_near_expiry_window():
     assert report["filing_window"]["derived_claim_type"] == "near_expiry"
 
 
+def test_claim_audit_applies_transit_window_and_pts_amount_check():
+    report = claim_audit_report("CLM-2404-04177")
+
+    assert report["claim"]["claim_type"] == "Breakage in transit"
+    assert report["filing_window"]["status"] == "within_window"
+    assert report["filing_window"]["elapsed_days"] == 3
+    assert "7-day window" in report["filing_window_policy_reference"]
+    assert report["claim_value_check"]["status"] == "match"
+    assert report["claim_value_check"]["calculated_value_inr"] == "3936.8"
+    assert report["expiry_days_check"]["policy_reference"] == "CO-POL-014 §7.1"
+
+
 def test_claim_audit_unknown_claim_fails_closed():
     report = claim_audit_report("CLM-DOES-NOT-EXIST")
 

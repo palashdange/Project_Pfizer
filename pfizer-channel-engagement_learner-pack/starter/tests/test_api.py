@@ -65,3 +65,19 @@ def test_health_endpoint_remains_available():
 
     assert response.status_code == 200
     assert response.json()["ok"] is True
+
+
+def test_batch_endpoint_returns_totals_and_rejects_unknown_month(monkeypatch):
+    import app as app_module
+
+    monkeypatch.setattr(app_module, "run_batch", lambda month=None: (
+        (_ for _ in ()).throw(ValueError("No claims in the register for month '2030-01'."))
+        if month == "2030-01" else {"period": month or "all", "annualised_inr": {"leakage": "1.00"}}
+    ))
+    client = TestClient(app_module.app)
+
+    ok = client.post("/api/batch", json={})
+    bad = client.post("/api/batch", json={"month": "2030-01"})
+
+    assert ok.status_code == 200 and ok.json()["annualised_inr"]["leakage"] == "1.00"
+    assert bad.status_code == 400 and "2030-01" in bad.json()["error"]

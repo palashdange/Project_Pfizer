@@ -3,9 +3,12 @@
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 import re
+from typing import Optional
 
 from config import (
     BREAKAGE_SHORT_SUPPLY_WINDOW_DAYS,
+    DUPLICATE_NEAR_QTY_MIN_PACKS,
+    DUPLICATE_NEAR_QTY_TOLERANCE_PCT,
     EXPIRY_CLAIM_WINDOW_DAYS as CLAIM_SUBMISSION_WINDOW_DAYS,
     FOC_CAP_PCT,
     MIN_REMAINING_SHELF_LIFE_DAYS,
@@ -155,6 +158,29 @@ def compare_claim_quantity(claimed_qty: str, recorded_qty: str) -> dict:
     }
 
 
+def classify_prior_claim(current_qty: Decimal, prior_qty: Decimal, prior_status: str,
+                         prior_has_credit_note: bool = True) -> Optional[str]:
+    """Classify an earlier claim on the same stockist and batch (CO-POL-014 §5.6).
+
+    Returns "repeat_of_credited" (same packs already credited), "repeat_of_pending" (same packs,
+    earlier claim not yet settled), "near_repeat" (within the configured tolerance), or None.
+    Rejected earlier claims moved no money and are ignored.
+    """
+    status = (prior_status or "").strip().casefold()
+    if status not in {"credited", "pending"}:
+        return None
+    difference = abs(current_qty - prior_qty)
+    if difference == 0:
+        if status == "credited" and prior_has_credit_note:
+            return "repeat_of_credited"
+        return "repeat_of_pending"
+    tolerance = max(
+        Decimal(str(DUPLICATE_NEAR_QTY_MIN_PACKS)),
+        current_qty * Decimal(str(DUPLICATE_NEAR_QTY_TOLERANCE_PCT)) / Decimal("100"),
+    )
+    return "near_repeat" if difference <= tolerance else None
+
+
 def shift_month(month: date, offset: int) -> date:
     """Return the first day of a month shifted by offset calendar months."""
     if not isinstance(month, date):
@@ -189,6 +215,75 @@ def parse_date(value: str | date) -> date:
         "Date must use DD-MM-YYYY, YYYY-MM-DD, or DD-Mon-YYYY format: "
         f"{value!r}"
     )
+
+
+_MONTHS = {m: i for i, m in enumerate(
+    ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"], start=1)}
+
+
+def parse_expiry_month(value: str) -> tuple[int, int]:
+    """Return (year, month) from a full date or a month-only expiry such as "Sep 2026", "09/2026" or "Oct-26".
+
+    Pharma packs print expiry as a month; batch-master expiry is the month end, so month-level
+    comparison is the exact test.
+    """
+    text = (value or "").strip()
+    try:
+        full = parse_date(text)
+        return full.year, full.month
+    except ValueError:
+        pass
+    named = re.fullmatch(r"([A-Za-z]{3})[A-Za-z]*[\s\-/.,']*(\d{2}|\d{4})", text)
+    numeric = re.fullmatch(r"(\d{1,2})\s*[/\-.]\s*(\d{2}|\d{4})", text)
+    if named and named.group(1).casefold() in _MONTHS:
+        month, year = _MONTHS[named.group(1).casefold()], int(named.group(2))
+    elif numeric and 1 <= int(numeric.group(1)) <= 12:
+        month, year = int(numeric.group(1)), int(numeric.group(2))
+    else:
+        raise ValueError(f"Expiry is not a recognisable date or month: {value!r}")
+    return (year + 2000 if year < 100 else year), month
+
+
+def parse_amount(value: str) -> Decimal:
+    """Parse a rupee amount such as "Rs 64,400", "₹57,477.00" or "57477"."""
+    cleaned = re.sub(r"(?i)(rs\.?|inr|₹|/-)", "", str(value or "")).replace(",", "").strip()
+    try:
+        amount = Decimal(cleaned)
+    except InvalidOperation as exc:
+        raise ValueError(f"Amount is not a number: {value!r}") from exc
+    if amount < 0:
+        raise ValueError(f"Amount cannot be negative: {value!r}")
+    return amount
+
+
+def compare_pasted_fields(pasted: dict, register: dict) -> list[dict]:
+    """Compare fields read from pasted text with the register values; return one row per compared field.
+
+    `register` holds claim_no context values: stockist_code, sku_code, batch_no, qty, claim_value_inr,
+    invoice_ref, expiry. Each row is {field, pasted, register, match}; unparseable pasted values give
+    match=None so a person sees them.
+    """
+    rows = []
+    for field in ("stockist_code", "sku_code", "batch_no", "invoice_ref"):
+        if pasted.get(field) and register.get(field):
+            same = pasted[field].strip().upper() == register[field].strip().upper()
+            rows.append({"field": field, "pasted": pasted[field], "register": register[field], "match": same})
+    comparisons = (
+        ("qty", parse_pack_quantity, parse_pack_quantity),
+        ("claim_value", parse_amount, parse_amount),
+        ("expiry_claimed", parse_expiry_month, parse_expiry_month),
+    )
+    register_keys = {"qty": "qty", "claim_value": "claim_value_inr", "expiry_claimed": "expiry"}
+    for field, parse_pasted, parse_register in comparisons:
+        pasted_value, register_value = pasted.get(field), register.get(register_keys[field])
+        if not pasted_value or not register_value:
+            continue
+        try:
+            same = parse_pasted(pasted_value) == parse_register(register_value)
+        except ValueError:
+            same = None
+        rows.append({"field": field, "pasted": pasted_value, "register": register_value, "match": same})
+    return rows
 
 
 def remaining_shelf_life_percent(

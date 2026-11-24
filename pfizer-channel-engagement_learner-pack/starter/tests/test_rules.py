@@ -13,6 +13,10 @@ from config import (
     MIN_REMAINING_SHELF_LIFE_PCT,
 )
 from agent.rules import (
+    classify_prior_claim,
+    compare_pasted_fields,
+    parse_amount,
+    parse_expiry_month,
     assess_transit_claim_window,
     assess_expiry_claim_window,
     claim_value_at_pts,
@@ -205,3 +209,51 @@ def test_claim_amount_comparison_checks_below_at_and_above_pts_value(claimed, ex
 
     assert result["status"] == expected
     assert result["policy_reference"] == "CO-POL-014 §5.7"
+
+
+def test_prior_claim_exact_repeat_of_credited_vs_pending():
+    assert classify_prior_claim(Decimal("272"), Decimal("272"), "Credited") == "repeat_of_credited"
+    assert classify_prior_claim(Decimal("547"), Decimal("547"), "Pending") == "repeat_of_pending"
+    # A credited row without a credit note number has not moved money yet: treat like pending.
+    assert classify_prior_claim(Decimal("10"), Decimal("10"), "Credited", prior_has_credit_note=False) == "repeat_of_pending"
+    assert classify_prior_claim(Decimal("10"), Decimal("10"), "Rejected") is None
+
+
+def test_near_repeat_tolerance_is_one_percent_or_one_pack_whichever_is_larger():
+    # 1 pack always counts (small claims): 50 vs 51 is 2% but only 1 pack.
+    assert classify_prior_claim(Decimal("50"), Decimal("51"), "Credited") == "near_repeat"
+    assert classify_prior_claim(Decimal("50"), Decimal("52"), "Credited") is None
+    # 1% of 500 = 5 packs: at 5 it counts, at 6 it does not.
+    assert classify_prior_claim(Decimal("500"), Decimal("495"), "Credited") == "near_repeat"
+    assert classify_prior_claim(Decimal("500"), Decimal("494"), "Credited") is None
+    assert classify_prior_claim(Decimal("370"), Decimal("371"), "Credited") == "near_repeat"
+
+
+def test_expiry_month_accepts_month_only_and_full_dates():
+    assert parse_expiry_month("Sep 2026") == (2026, 9)
+    assert parse_expiry_month("09/2026") == (2026, 9)
+    assert parse_expiry_month("Oct-26") == (2026, 10)
+    assert parse_expiry_month("30-09-2026") == (2026, 9)
+    with pytest.raises(ValueError):
+        parse_expiry_month("13/2026")
+    with pytest.raises(ValueError):
+        parse_expiry_month("soon")
+
+
+def test_amount_parsing_strips_currency_and_separators():
+    assert parse_amount("Rs 64,400") == Decimal("64400")
+    assert parse_amount("₹57,477.00") == Decimal("57477.00")
+    with pytest.raises(ValueError):
+        parse_amount("sixty")
+
+
+def test_pasted_fields_match_or_conflict_with_register():
+    register = {"batch_no": "G2400105", "qty": "805", "claim_value_inr": "57477.0",
+                "expiry": "30-06-2026", "invoice_ref": "INV/N01/2412/022035"}
+    same = compare_pasted_fields(
+        {"batch_no": "g2400105", "qty": "805", "claim_value": "Rs 57,477", "expiry_claimed": "Jun 2026"}, register)
+    assert all(row["match"] is True for row in same)
+    conflict = compare_pasted_fields({"claim_value": "Rs 64,400", "expiry_claimed": "Aug 2025"}, register)
+    assert [row["match"] for row in conflict] == [False, False]
+    unreadable = compare_pasted_fields({"expiry_claimed": "next month"}, register)
+    assert unreadable[0]["match"] is None

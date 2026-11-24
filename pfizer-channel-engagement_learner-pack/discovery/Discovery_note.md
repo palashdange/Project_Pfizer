@@ -32,7 +32,7 @@ Rank 1 is the largest modeled expiry-target gap; it is not proven recoverable an
 
 **Secondary user:** Kavita Rao (Head of Supply Chain), reviewing expiry-risk batches and short CFAs ([interviews, p. 2](../data-pack/04_stakeholder_interview_notes.pdf)).
 
-**Plan for the money:** Pre-credit controls could flag **₹20.25 lakh/year** in outside-window (₹15.74L), duplicate (₹4.45L), and over-quantity (₹0.066L) candidates—not proven savings. **₹43.08 lakh/year** of credited claims without references would route to ledger/approval review, not automatic rejection. Address future expiry risk through scheme stock norms (§4.5: max 2.5 months’ average secondary stock; SSS not received), allocation review, and an expiry-risk view; their financial impact is unquantified.
+**Plan for the money:** Pre-credit controls could flag **₹20.25 lakh/year** in outside-window (₹15.74L), duplicate (₹4.45L), and over-quantity (₹0.066L) candidates—not proven savings. The pilot's batch mode, re-running every register claim through its checks, reproduces this at ₹19.94 lakh/year. **₹43.08 lakh/year** of credited claims without references would route to ledger/approval review, not automatic rejection. Address future expiry risk through scheme stock norms (§4.5: max 2.5 months’ average secondary stock; SSS not received), allocation review, and an expiry-risk view; their financial impact is unquantified.
 
 ## 5. Why it may be happening: observed signals
 

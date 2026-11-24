@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Project Sankalp pilot</title>
-<link rel="stylesheet" href="/style.css?v=11">
+<link rel="stylesheet" href="/style.css?v=12">
 </head>
 <body>
 <main>
@@ -69,9 +69,21 @@
       <pre id="raw-evidence"></pre>
     </details>
   </section>
+  <section class="input-card batch-card" aria-labelledby="batch-heading">
+    <h2 id="batch-heading">2. Batch review · what the pilot would have caught</h2>
+    <p class="hint">Runs every claim in the register (or one month) through the same checks, in code, with no model calls. Rupees are totalled in Python from <code>expiry_claims.csv</code>.</p>
+    <div class="batch-controls">
+      <label class="sr-only" for="batch-month">Period</label>
+      <select id="batch-month"><option value="">All months in the register</option></select>
+      <button type="button" id="batch-run">Run batch</button>
+    </div>
+    <p id="batch-status" class="hint status" role="status" aria-live="polite"></p>
+    <div id="batch-out" hidden></div>
+  </section>
 </main>
-<script src="/evidence.js?v=12"></script>
+<script src="/evidence.js?v=13"></script>
 <script src="/progress.js?v=6"></script>
 <script src="/app.js?v=9"></script>
+<script src="/batch.js?v=2"></script>
 </body>
 </html>

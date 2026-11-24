@@ -8,8 +8,15 @@
 
 - **Deployed:** https://project-pfizer.vercel.app (Vercel Hobby, auto-deploys from `master`). Region `bom1` confirmed live. The repo is private and still deploys (owner merges via PR, merge commit).
 - **First user: Commercial Finance claims executive** (owner Neha Bansal). The graph routes each claim to recommend credit, reject, needs a person, or not found. Code decides; the model only parses free text and explains.
-- **Accuracy:** check set **16/16** (baseline 6/16); held-out set **3/6**, reported separately. `pytest -q`: **89 passed**.
+- **Accuracy:** check set **16/16** (baseline 6/16); held-out 3/6, then 6/6 after fixes built against those cases. `pytest -q`: **108 passed**. Batch mode: ₹19.94 L/yr credited leakage the rules stop.
 - **Second user** (Kavita Rao, Supply Chain) is optional and not yet built in the new graph.
+
+## Update — 2026-11-24 (night, batch mode)
+
+- **Changed:** duplicate check now sends pending and near-equal repeats to a person (exact credited repeats still reject). Pasted claim details are compared with the register in code. Added batch mode (`POST /api/batch`, `agent/batch.py`, page section 2, ₹ at stake per claim). Indexed data lookups (full-register run ≈25 s, previously over 5 min).
+- **Result:** check set 16/16; held-out 6/6, but only after fixes built against those cases, so they no longer count as unseen. Batch over 30 months, per year: ₹19.94 L credited leakage the rules stop (reconciles to sizing's ₹20.25 L), ₹42.00 L whole value of rejected credited claims, ₹90.41 L at risk (needs a person; not saved), ₹6.58 L pending claims blocked.
+- **Evidence/checks:** `pytest -q` 108 passed; Node tests 20/20; `python checks/run_checks.py` with the live model.
+- **Open items:** fresh held-out cases; UI polish; deck.
 
 ## Update — 2026-11-24 (late)
 

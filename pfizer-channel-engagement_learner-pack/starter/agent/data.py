@@ -96,13 +96,30 @@ def missing_files(filenames: tuple[str, ...], data_dir: Path = DATA_DIR) -> list
     return [name for name in filenames if not (data_dir / name).is_file()]
 
 
+@lru_cache(maxsize=None)
+def _index(dataset: str, fields: tuple[str, ...], data_dir: Path) -> dict[tuple, tuple[dict, ...]]:
+    """Group a dataset's cached rows by key fields once, keeping file order within each key."""
+    filename = _FILES.get(dataset)
+    if filename is None or not (data_dir / filename).is_file():
+        return {}
+    rows, _ = _read_csv(filename, Path(data_dir))
+    grouped: dict[tuple, list[dict]] = {}
+    for row in rows:
+        grouped.setdefault(tuple(row.get(field) for field in fields), []).append(row)
+    return {key: tuple(value) for key, value in grouped.items()}
+
+
+def _lookup(dataset: str, fields: tuple[str, ...], values: tuple[str, ...], data_dir: Path) -> list[SourceRow]:
+    """Return copies of the rows matching normalized key values, in file order."""
+    key = tuple(value.strip().upper() if isinstance(value, str) else "" for value in values)
+    return [dict(row) for row in _index(dataset, fields, Path(data_dir)).get(key, ())]  # type: ignore[misc]
+
+
 def _find(dataset: str, field: str, value: str, data_dir: Path) -> Optional[SourceRow]:
     if not isinstance(value, str) or not value.strip():
         return None
-    for row in rows_for(dataset, data_dir) or ():
-        if row.get(field) == value.strip().upper():
-            return row
-    return None
+    matches = _lookup(dataset, (field,), (value,), data_dir)
+    return matches[0] if matches else None
 
 
 def get_claim(claim_no: str, data_dir: Path = DATA_DIR) -> Optional[SourceRow]:
@@ -127,27 +144,22 @@ def get_stockist(code: str, data_dir: Path = DATA_DIR) -> Optional[SourceRow]:
 
 def sales_for(stockist: str, batch: str, data_dir: Path = DATA_DIR) -> Optional[list[SourceRow]]:
     """Find deduplicated sales rows for a stockist and batch, or None."""
-    stockist_code = stockist.strip().upper() if isinstance(stockist, str) else ""
-    batch_code = batch.strip().upper() if isinstance(batch, str) else ""
-    matches = [
-        row for row in (rows_for("sales", data_dir) or ())
-        if row.get("stockist_code") == stockist_code and row.get("batch_no") == batch_code
-    ]
-    return matches or None
+    return _lookup("sales", ("stockist_code", "batch_no"), (stockist, batch), data_dir) or None
 
 
 def credited_claims_for(stockist: str, batch: str, data_dir: Path = DATA_DIR) -> Optional[list[SourceRow]]:
     """Find credited claim rows for a stockist/batch, or None if there are none."""
-    stockist_code = stockist.strip().upper() if isinstance(stockist, str) else ""
-    batch_code = batch.strip().upper() if isinstance(batch, str) else ""
     matches = [
-        row for row in (rows_for("claim", data_dir) or ())
-        if row.get("stockist_code") == stockist_code
-        and row.get("batch_no") == batch_code
-        and (row.get("status") or "").casefold() == "credited"
+        row for row in _lookup("claim", ("stockist_code", "batch_no"), (stockist, batch), data_dir)
+        if (row.get("status") or "").casefold() == "credited"
         and bool((row.get("credit_note_no") or "").strip())
     ]
     return matches or None
+
+
+def claims_for(stockist: str, batch: str, data_dir: Path = DATA_DIR) -> Optional[list[SourceRow]]:
+    """Find every claim row, in any status, for a stockist/batch, or None if there are none."""
+    return _lookup("claim", ("stockist_code", "batch_no"), (stockist, batch), data_dir) or None
 
 
 def get_email(email_id: str, data_dir: Path = DATA_DIR) -> Optional[SourceRow]:

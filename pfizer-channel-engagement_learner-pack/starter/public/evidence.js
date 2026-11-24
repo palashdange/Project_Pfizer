@@ -385,6 +385,7 @@
     }));
     return `<article class="evidence-card claim-review">
       <h3>Claim ${escapeHtml(item.claim_no || "not identified")}</h3>
+      ${item.at_stake_inr ? `<p class="at-stake">₹ at stake: ${formatInr(item.at_stake_inr)} <span class="muted">(${escapeHtml((item.records && item.records.claim && `${item.records.claim.file}:${item.records.claim.source_row}`) || "expiry_claims.csv")}, claim value or quantity × PTS)</span></p>` : ""}
       <h4>Claims decision checks</h4>
       ${renderTable(rows, [["check", "Check"], ["status", "Status"], ["source", "Source & row"], ["finding", "Finding"], ["policy", "Policy"]], "No claim checks were run.")}
     </article>`;

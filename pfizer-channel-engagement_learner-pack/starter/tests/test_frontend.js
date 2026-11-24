@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
-const { answerSummary, renderEvidence, resultBadge, stockRowMatches } = require("../public/evidence.js");
+const { answerSummary, decisionOwner, renderEvidence, resultBadge, stockRowMatches } = require("../public/evidence.js");
 const { clearPreviousOutput, startStatusCycle } = require("../public/progress.js");
 
 test("weekly review page exposes read-only status and supported checks", () => {
@@ -13,8 +13,8 @@ test("weekly review page exposes read-only status and supported checks", () => {
   assert.match(html, /Read-only decision support/);
   assert.match(html, /No ERP\/WMS write-back/);
   assert.match(html, /Human review required/);
-  assert.match(html, /evidence\.js\?v=11/);
-  assert.match(html, /app\.js\?v=8/);
+  assert.match(html, /evidence\.js\?v=12/);
+  assert.match(html, /app\.js\?v=9/);
   assert.match(html, /Review a claim/);
   assert.match(html, /Inspect a claim email/);
   assert.match(html, /Tuesday claims review · scenario replay/);
@@ -293,4 +293,13 @@ test("starting a new question hides and clears the previous answer and evidence"
   assert.equal(evidenceCleared, true);
   assert.equal(elements.rawEvidence.textContent, "");
   assert.equal(elements.rawDetails.open, false);
+});
+
+test("every claim route names the person who decides, and not-found names nobody", () => {
+  for (const route of ["RECOMMEND_CREDIT", "REJECT", "NEEDS_PERSON"]) {
+    assert.match(decisionOwner(route), /Neha Bansal \(Controller\)/);
+  }
+  assert.match(decisionOwner("RECOMMEND_CREDIT"), /^Recommendation only/);
+  assert.match(decisionOwner("NOT_FOUND"), /nothing to decide/);
+  assert.equal(decisionOwner(undefined), "");
 });

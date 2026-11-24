@@ -104,3 +104,9 @@ pre { overflow: auto; max-height: 420px; background: #fff; border: 1px solid #e1
   .stock-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   form { align-items: stretch; }
 }
+
+.decision-owner {
+  margin: 6px 0 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}

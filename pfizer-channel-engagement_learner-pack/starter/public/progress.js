@@ -10,6 +10,10 @@
       elements.decisionBadge.textContent = "";
       elements.decisionBadge.hidden = true;
     }
+    if (elements.decisionOwner) {
+      elements.decisionOwner.textContent = "";
+      elements.decisionOwner.hidden = true;
+    }
     elements.evidence.replaceChildren();
     elements.rawEvidence.textContent = "";
     elements.rawDetails.open = false;

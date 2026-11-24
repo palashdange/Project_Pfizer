@@ -23,6 +23,7 @@ form.addEventListener("submit", async (e) => {
     output,
     answer: document.getElementById("answer"),
     decisionBadge: document.getElementById("decision-badge"),
+    decisionOwner: document.getElementById("decision-owner"),
     evidence: document.getElementById("evidence"),
     rawEvidence: document.getElementById("raw-evidence"),
     rawDetails: document.querySelector(".raw-details"),
@@ -52,6 +53,9 @@ form.addEventListener("submit", async (e) => {
     decisionBadge.hidden = !badge;
     decisionBadge.textContent = badge ? badge.label : "";
     decisionBadge.className = badge ? `decision-badge ${badge.tone}` : "decision-badge";
+    const owner = document.getElementById("decision-owner");
+    owner.textContent = EvidenceFormatter.decisionOwner(data.route);
+    owner.hidden = !owner.textContent;
     const evidencePanel = document.getElementById("evidence");
     evidencePanel.innerHTML = evidence.length
       ? evidence.map((item) => EvidenceFormatter.renderEvidence(item)).join("")

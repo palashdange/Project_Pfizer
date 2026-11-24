@@ -1,20 +1,24 @@
-# Project Sankalp pilot
+# Project Sankalp pilot (app)
 
-Read-only weekly review copilot for claims and domestic supply signals. A FastAPI API
-routes questions through a LangGraph tool loop; deterministic Python tools read the
-case CSVs and return source-row evidence. The model explains tool results but cannot
-approve claims, move stock, or write to ERP/WMS systems.
+A read-only claims-screening pilot for the Commercial Finance claims team. A FastAPI endpoint runs each input through a LangGraph graph. Python checks the claim against policy CO-POL-014 and the case CSVs, then routes it to recommend credit, reject, needs a person, or not found, citing the clause and source rows. The model only reads free text into fields and explains the result. It cannot approve a claim, post a credit note, or write to ERP/WMS. A named person decides.
+
+The project overview, live URL and demo inputs are in the [root README](../../README.md). The design is in the [architecture note](../discovery/architecture_note.md).
 
 ```
-app.py            FastAPI entrypoint (Vercel looks for `app` here)
+app.py            FastAPI routes only (/api/health, /api/ask); Vercel looks for `app` here
+config.py         every policy number, with its CO-POL-014 clause and page
+agent/graph.py    the LangGraph graph: state, nodes, edges, route priority
+agent/rules.py    plain-Python date, quantity, value and shelf-life rules
+agent/data.py     loads the CSVs once, de-duplicates, keeps source rows
+agent/prompts.py  the two prompts (field extraction, explanation)
 agent/llm.py      the only file that knows the model provider (OpenRouter)
-agent/tools.py    tools that read data/; exact facts come from here
-agent/graph.py    the LangGraph graph; replace it with yours
-data/             seven case CSVs used by the supply and claims review tools
-public/           index.html, app.js, style.css: the frontend
-tests/            run with pytest; no API key needed
-AGENTS.md         instructions for your AI coding agent
-vercel.json       Vercel function settings; keeps development files out of the bundle
+agent/tools.py    earlier tool-loop functions; tested but not wired into the graph
+data/             the case CSVs
+public/           index.html, app.js, evidence.js, progress.js, style.css
+tests/            pytest (no API key needed) and Node frontend tests
+checks/           check_set.csv (16 hand-checked + 6 held-out) and run_checks.py
+AGENTS.md         instructions for the coding agent
+vercel.json       region bom1; keeps tests and local files out of the bundle
 ```
 
 ## Run it on your laptop
@@ -24,22 +28,14 @@ python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt uvicorn pytest httpx
 cp .env.example .env               # then put your OpenRouter key in .env
-node --test tests/test_frontend.js # check the evidence display formatting
 pytest -q
-uvicorn app:app --reload
+node --test tests/test_frontend.js
+python checks/run_checks.py        # needs the key; prints check-set and held-out scores
+uvicorn app:app --reload           # open http://127.0.0.1:8000
 ```
-
-Open http://127.0.0.1:8000. Quick actions cover batch lookup, short shelf-life
-screening, CFA stock signals, a primary-shipment baseline, a claims ledger review,
-and an untrusted-email example. Claim review results are always advisory and require
-human review.
 
 ## Deploy
 
-Set the Vercel project root to `starter/`, add `OPENROUTER_API_KEY` as an environment
-variable, and deploy using the Vercel CLI or connected Git repository. The local `.env`
-file is ignored; do not upload or commit it. `vercel.json` preserves the CSVs and public
-files while excluding tests and local development artifacts from the function bundle.
+Vercel Hobby, with root directory `pfizer-channel-engagement_learner-pack/starter` and env vars `OPENROUTER_API_KEY` and `MODEL`. Only the repo owner's commits deploy, so changes go in through a pull request that the owner merges into `master` as a merge commit. Check `/api/health` after each deploy. The local `.env` is git-ignored; never commit it.
 
-This exercise app has no login, as required by the course blueprint. Do not put real
-customer or patient information in it or expose non-training data through a public URL.
+This exercise app has no login. Use it only with the fictional case data.

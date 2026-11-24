@@ -56,9 +56,10 @@ flowchart TD
 | Provider down during explain | Code route kept; code fallback text | `test_provider_failure_during_explain_keeps_code_route_and_uses_fallback` |
 | Model adds a number or approval wording | Fallback explanation | `test_model_explanation_cannot_add_numbers_not_present_in_checks` |
 | Value ≠ quantity × PTS | `value: fail` → `NEEDS_PERSON` | `test_claim_value_mismatch_is_sent_to_a_person` |
+| Provider hangs | **Gap:** no explicit model or request timeout is configured; the Vercel function limit is the only cap | None yet |
 | Batch, sales or invoice row missing; bad date or quantity | Check returns `missing` → `NEEDS_PERSON`, never a guess | check set `missing_batch_01`, `blank_invoice_01/02`; date and quantity tests in `test_rules.py` |
 
-`pytest -q`: **89 passed**. The tests cover every boundary in `rules.py` (day 90, day 7, the 60% shelf-life threshold, the 3% cap, PTS value). `agent/tools.py` holds the earlier tool-loop functions. They are still unit-tested but **not wired into the graph**.
+`pytest -q`: **89 passed**; the frontend Node tests pass **16/16** (`test_frontend.js` and `test_evidence.js`). The tests cover every boundary in `rules.py` (day 90, day 7, the 60% shelf-life threshold, the 3% cap, PTS value). `agent/tools.py` holds the earlier tool-loop functions. They are still unit-tested but **not wired into the graph**.
 
 ## 5. Accuracy
 

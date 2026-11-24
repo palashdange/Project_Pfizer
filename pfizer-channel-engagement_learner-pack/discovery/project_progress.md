@@ -13,7 +13,7 @@
 
 ## Update — 2026-11-25
 
-- **Changed:** rewrote `architecture_note.md` and `Graph_mermaid.md` from the current `graph.py`; added 6 `holdout_` cases to `checks/check_set.csv`, with `run_checks.py` scoring them separately; added two provider-failure tests; filled in `starter/AGENTS.md`; fixed the README health link; pinned Vercel region `bom1`; removed `.DS_Store` and added a root `.gitignore`.
+- **Changed:** rewrote `architecture_note.md` from the current `graph.py`; added 6 `holdout_` cases to `checks/check_set.csv`, with `run_checks.py` scoring them separately; added two provider-failure tests; filled in `starter/AGENTS.md`; fixed the README health link; pinned Vercel region `bom1`; removed `.DS_Store` and added a root `.gitignore`.
 - **Result:** held-out 3/6. The failures are known gaps: pasted claim fields (expiry, value) are not compared against the register, and `check_duplicate` ignores earlier *pending* claims (CLM-2608-02222 → CLM-2609-04449).
 - **Evidence/checks:** `python checks/run_checks.py` gives 16/16 + 3/6 with live `gpt-4o-mini`. A code-only run over all 4,503 claims gives 2,112 credit / 532 reject / 1,859 person. Measured cost ≈ $0.00016 per claim, 1.4–3.6 s.
 - **Open items:** decide whether to fix the two held-out gaps; batch mode (Thu); UI polish and PDF export (Fri); deck (Sat).

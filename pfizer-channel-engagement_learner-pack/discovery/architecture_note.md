@@ -1,87 +1,101 @@
-# Project Sankalp: implemented architecture
+# Project Sankalp: implemented pilot architecture
 
-**As-built scope · checked against `starter/` on 24 November 2026**
+**As built · checked against `starter/` on 24 November 2026**
 
-## Users and weekly decisions
+## Users and weekly decision
 
-**Primary user:** Commercial Finance claims executive, owned by Neha Bansal (Controller). The weekly job is to review each registered claim and decide whether to credit, reject, or route it for a person's review. The app currently provides screening evidence only; it does not make any of those decisions. **Secondary user:** Kavita Rao (Head of Supply Chain), reviewing expiry-risk batches and short CFAs. The names and workflow context come from the case interviews ([`04_stakeholder_interview_notes.pdf`](../data-pack/04_stakeholder_interview_notes.pdf)); the implemented read-only tools are in [`starter/agent/tools.py`](../starter/agent/tools.py).
+**Primary user:** Commercial Finance claims executive; owner Neha Bansal (Controller). Weekly decision: review a claim and recommend credit, reject under a hard rule, or route to a person. The UI handles one input at a time and does not issue credit. This follows Neha's request for pre-checks for her two-person team ([interviews, p. 2](../data-pack/04_stakeholder_interview_notes.pdf); [Discovery note §4](Discovery_note.md#4-pilot-user-and-plan-for-the-money)).
 
-## App and graph
+**Secondary user:** Kavita Rao (Head of Supply Chain), who needs expiry-risk batches and short CFAs ([interviews, p. 2](../data-pack/04_stakeholder_interview_notes.pdf)). That workflow is **not implemented** here. Deterministic checks, row citations, and read-only operation reflect the case accuracy requirement and preserve human credit authority ([UI](../starter/public/index.html), [API](../starter/app.py)).
 
-The static single-page UI calls a FastAPI endpoint; that endpoint invokes a LangGraph model/tool loop and returns an answer, structured evidence, and model-call count. The app does not write to ERP/WMS or post credits ([`starter/public/index.html`](../starter/public/index.html), [`starter/public/app.js`](../starter/public/app.js), [`starter/app.py`](../starter/app.py), [`starter/agent/graph.py`](../starter/agent/graph.py)).
+## Graph and nodes
 
-The diagram is derived from the compiled graph in [`starter/agent/graph.py`](../starter/agent/graph.py). `route()` is a conditional edge, not a node.
+The diagram follows the nodes, conditional routes, and fan-out/fan-in edges in [`starter/agent/graph.py`](../starter/agent/graph.py). `dispatch_checks` is a synchronization/fan-out node. The six checks run in parallel and join before `decide`.
 
 ```mermaid
 flowchart TD
-    S([START]) --> M[model · call_model]
-    M -->|tool calls and trips below 4| T[tools · run_tools]
-    M -->|no tool calls or trips at limit| E([END])
-    T --> M
+    S([START]) --> P[parse_input<br/>code IDs or model field extraction]
+    P -->|claim identified| L[lookup<br/>Python data lookups]
+    P -->|no claim identified| X[explain]
+    L -->|claim not found| E([END])
+    L -->|claim found| F[dispatch_checks]
+    F --> W[check_window]
+    F --> Q[check_quantity]
+    F --> D[check_duplicate]
+    F --> I[check_invoice_ref]
+    F --> B[check_batch_expiry]
+    F --> V[check_value]
+    W --> J[decide]
+    Q --> J
+    D --> J
+    I --> J
+    B --> J
+    V --> J
+    J --> X
+    X --> E
 ```
 
-| Node | What runs | Why code / why model | Source |
-|---|---|---|---|
-| `model` / `call_model` | OpenRouter chat model with the registered tools bound; message history and system instructions are sent on each trip. | Model interprets free-form questions, chooses a tool, and explains returned evidence. It is instructed not to invent facts or approve claims. | [`starter/agent/graph.py`](../starter/agent/graph.py), [`starter/agent/llm.py`](../starter/agent/llm.py) |
-| `tools` / `run_tools` | Python dispatches tool calls and serializes exact results as `ToolMessage`s. | Code reads records and applies arithmetic/date rules so factual values and policy screens come from source rows; the model cannot change them. | [`starter/agent/graph.py`](../starter/agent/graph.py), [`starter/agent/tools.py`](../starter/agent/tools.py), [`starter/agent/rules.py`](../starter/agent/rules.py) |
-
-`MAX_TRIPS = 4`; the graph ends when there are no tool calls or the counter reaches four. `run_question()` collects tool evidence and applies a deterministic response for EML-017 so that its hostile text cannot produce a claim decision ([`starter/agent/graph.py`](../starter/agent/graph.py)).
-
-## Tools and data
-
-Tools are registered in [`starter/agent/tools.py`](../starter/agent/tools.py); CSV paths resolve under [`starter/data/`](../starter/data/).
-
-| Tool | CSV files read | Output |
+| Node | Code or model | Why it runs |
 |---|---|---|
-| `lookup_batch` | `batch_master.csv`, `sku_master.csv` | Batch and product facts, or not-found. |
-| `review_expiry_claim` | `expiry_claims.csv`, `batch_master.csv`, `primary_sales.csv`, `sku_master.csv`, `stockist_master.csv` | Claim evidence, possible prior credit, batch/invoice checks, quantity comparison, and expiry-window screen; never approves or rejects. |
-| `lookup_claim_email` | `claim_emails.csv` | Email text with source row and `untrusted_correspondence` status. |
-| `find_short_shelf_life_shipments` | `primary_sales.csv`, `batch_master.csv` | RSL exceptions and unevaluable rows; CO-POL-014 §7.1 defines RSL on the invoice date. [`starter/agent/rules.py`](../starter/agent/rules.py) computes the percentage. |
-| `find_cfa_stock_imbalances` | `cnf_stock_snapshot.csv`; optionally `sku_master.csv` | Latest-snapshot zero-stock versus positive-batch signals; no excess-stock conclusion or transfer recommendation. |
-| `forecast_primary_shipments` | `primary_sales.csv` | Same-month-last-year primary-shipment baseline and order-gap diagnostics; not downstream demand. |
+| `parse_input` | Python + model | Match IDs in code; model extracts fields only. Prompt: [`agent/prompts.py`](../starter/agent/prompts.py). |
+| `lookup` | Python + [`agent/data.py`](../starter/agent/data.py) | Fetch claim and related master, billing, and prior-credit rows. |
+| `dispatch_checks` | Python | Fan out the six checks. |
+| `check_window` | Python + [`agent/rules.py`](../starter/agent/rules.py) | Apply filing windows. |
+| `check_quantity` | Python + rules | Compare claimed to invoiced + free packs. |
+| `check_duplicate` | Python + rules | Match earlier credited stockist/batch/quantity. |
+| `check_invoice_ref` | Python | Match invoice reference to sales. |
+| `check_batch_expiry` | Python + rules | Compare claim and batch-master expiry. |
+| `check_value` | Python + rules | Compare claim value to quantity × PTS; mismatch → person. |
+| `decide` | Python | Apply fixed route priority. |
+| `explain` | Model + Python | Explain route/checks; validate output and fall back to code. |
 
-## Failure handling and tests
+## Lookups, checks, and policy references
 
-The table maps important failure paths to focused tests in [`starter/tests/test_tools.py`](../starter/tests/test_tools.py), [`starter/tests/test_rules.py`](../starter/tests/test_rules.py), and [`starter/tests/test_api.py`](../starter/tests/test_api.py).
+[`agent/data.py`](../starter/agent/data.py) caches and de-duplicates CSVs and adds source rows. Rules/clauses are in [`config.py`](../starter/config.py) and [`agent/rules.py`](../starter/agent/rules.py). The legacy functions in `agent/tools.py` are not called by this graph.
 
-| Case | Implemented response | Coverage |
+| Lookup/check | CSV files read | Config policy clause |
 |---|---|---|
-| Unknown batch, claim, or email | Returns not-found; unknown claim remains `NEEDS_HUMAN_REVIEW`. | `test_unknown_batch_is_reported_not_invented`, `test_claim_audit_unknown_claim_fails_closed`, `test_claim_email_lookup_returns_not_found_for_unknown_id` (`test_tools.py`). |
-| Required CSV missing | Names the missing file(s) in the result. | `test_claim_audit_reports_missing_data_files`, `test_shelf_life_report_reports_missing_input_files`, `test_stock_imbalance_validates_limit_and_missing_file` (`test_tools.py`). |
-| Invalid dates/quantities, missing batch dates, SKU mismatch, or threshold edge | Rejects invalid rule inputs or reports rows as unevaluable; 60% exactly is not flagged. | `test_missing_date_is_rejected`, `test_expiry_must_be_after_manufacture_date`, `test_pack_quantity_rejects_missing_invalid_or_negative_values` (`test_rules.py`); shelf-life edge tests in `test_tools.py`. |
-| Ambiguous stock or invalid controls | Excludes conflicting stock groups with a quality issue; invalid limits/forecast parameters return errors. | Stock and forecast control tests in `test_tools.py`. |
-| Invalid forecast source quantity or missing baseline month | Withholds malformed forecast input; does not assume a missing prior-year month is zero. | `test_primary_shipment_forecast_withholds_results_for_invalid_source_quantity`, `test_primary_shipment_forecast_uses_prior_year_month_and_keeps_provenance` (`test_tools.py`). |
-| EML-017 says to skip checks and approve | Email is returned as untrusted evidence; a fixed post-graph response replaces the model answer, so the adversarial model output cannot approve the claim. | `test_eml_017_injection_is_untrusted_and_cannot_produce_approval` (`test_api.py`); lookup status is also checked by `test_claim_email_lookup_returns_untrusted_text_with_source_row` (`test_tools.py`). |
-| Missing API key / invalid request body | Missing key raises `ValueError` and maps to HTTP 503; FastAPI request validation returns HTTP 422. | No focused tests currently cover these API errors ([`starter/agent/llm.py`](../starter/agent/llm.py), [`starter/app.py`](../starter/app.py)). |
-| Provider/tool error or four-trip exhaustion | Only `ValueError` is caught by the API; other exceptions are not handled there. The graph stops at four trips without an explicit incomplete-result status. | No focused tests currently cover these paths ([`starter/app.py`](../starter/app.py), [`starter/agent/graph.py`](../starter/agent/graph.py)). |
+| Email lookup | `claim_emails.csv` | Untrusted correspondence; no decision clause. |
+| Claim / batch / SKU / stockist | `expiry_claims.csv`; `batch_master.csv`; `sku_master.csv`; `stockist_master.csv` | Lookup only. |
+| Invoice sales / prior credits | `primary_sales.csv`; `expiry_claims.csv` | Lookup only. |
+| `check_window` | `expiry_claims.csv` + `batch_master.csv` (expiry); `expiry_claims.csv` + `primary_sales.csv` (transit) | CO-POL-014 §5.2 |
+| `check_quantity` | `expiry_claims.csv`, `primary_sales.csv` | CO-POL-014 §5.5 |
+| `check_duplicate` | `expiry_claims.csv` | CO-POL-014 §5.6 |
+| `check_invoice_ref` | `expiry_claims.csv`, `primary_sales.csv` | CO-POL-014 §5.4 |
+| `check_batch_expiry` | `expiry_claims.csv`, `batch_master.csv` | `BATCH_EXPIRY_POLICY_CLAUSE` = CO-POL-014 §5.2 (`config.py`) |
+| `check_value` | `expiry_claims.csv`, `sku_master.csv` | CO-POL-014 §5.7 |
 
-**Verification:** `pytest -q` from `starter/` completed with **68 passed**.
+## Failure paths and coverage
 
-## Deployment, latency, and cost
+| Situation | Implemented behavior | Test coverage |
+|---|---|---|
+| Claim ID not found | `NOT_FOUND`, with no check or explanation model call. | `test_claim_graph_covers_recommend_reject_needs_person_and_not_found` (`tests/test_graph.py`); `test_ask_not_found_does_not_call_model` (`tests/test_api.py`). |
+| Missing or conflicting evidence | Missing checks and non-priority mismatches route to `NEEDS_PERSON`; failed window, duplicate, or quantity checks route to `REJECT`. | `test_claim_graph_covers_recommend_reject_needs_person_and_not_found`; `test_claim_value_mismatch_is_sent_to_a_person` (`tests/test_graph.py`). |
+| EML-017 prompt injection | Email is marked `untrusted_correspondence`; claimed approvals are not followed. | `test_email_prompt_injection_is_untrusted_and_cannot_return_approval` (`tests/test_graph.py`); `test_ask_keeps_eml_017_untrusted_and_never_approves` (`tests/test_api.py`). |
+| Model extraction/explanation error | Exceptions route unparsed input to a person or use a code-generated explanation while preserving route. | Behavior exists in `agent/graph.py`; **no dedicated provider-exception test currently covers the fallback**. |
+| Request timeout | No explicit model/API/graph timeout is configured. | **Not implemented; no timeout test.** |
 
-| Item | As configured / measured |
+Current local verification: `pytest -q` passed **87 tests**; frontend Node tests passed **16/16**. The focused model-error fallback and timeout gaps above remain open.
+
+## Check set
+
+Baseline commit `a22bdcc` records **6/16**: the evidence-only graph had no route field, so recommend/reject could not be evaluated deterministically. Current [`checks/run_checks.py`](../starter/checks/run_checks.py) reads `route` and scored **16/16 locally** on those cases. No failures remain; this is not a live score.
+
+## Live cost, speed, and deployment
+
+The graph returns model-call count and elapsed seconds, but captures no tokens or provider cost ([`agent/graph.py`](../starter/agent/graph.py), [`agent/llm.py`](../starter/agent/llm.py)). The live host did not resolve here; five live samples are unavailable.
+
+| Requested measurement | Verified status |
 |---|---|
-| Live UI | [https://project-pfizer.vercel.app](https://project-pfizer.vercel.app) |
-| Vercel root | `starter/`, per [`starter/README.md`](../starter/README.md). |
-| Environment variables | Required: `OPENROUTER_API_KEY`. Optional: `MODEL`, default `openai/gpt-4o-mini`. The app calls OpenRouter at `https://openrouter.ai/api/v1` ([`starter/agent/llm.py`](../starter/agent/llm.py)). |
-| Region | No `regions` setting is present in [`starter/vercel.json`](../starter/vercel.json). The deployment's actual region is a Vercel project setting and could not be verified from this checkout; the local CLI has no credentials. |
-| Seconds per request | Not measured. The five earlier real `/api/ask` samples recorded token counts but no durations; the live host could not be reached from this environment, so there is no defensible latency figure here. |
-
-Five earlier real `/api/ask` samples used `openai/gpt-4o-mini`; the observed model usage and estimated cost were:
-
-| Sample | Input tokens | Output tokens | Model calls | Estimated cost (USD) |
-|---|---:|---:|---:|---:|
-| Batch expiry lookup | 1,335 | 37 | 2 | $0.00022245 |
-| Shelf-life scan | 4,993 | 712 | 2 | $0.00117615 |
-| CFA stock review | 10,280 | 1,102 | 2 | $0.00220320 |
-| Shipment baseline | 14,671 | 494 | 2 | $0.00249705 |
-| Claim evidence review | 2,420 | 708 | 2 | $0.00078780 |
-| **Total / mean** | **33,699 / 6,740** | **3,053 / 611** | **10 / 2** | **$0.00688665 / $0.00137733** |
-
-The estimate uses OpenRouter's listed GPT-4o-mini rates ($0.15/M input tokens, $0.60/M output tokens): `(input × 0.15 + output × 0.60) / 1,000,000` ([model pricing](https://openrouter.ai/openai/gpt-4o-mini)). For **about 4,000 claims/year**, one claim-review request per claim at the observed claim-review sample cost is approximately **$3.15/year** in model charges. This is an extrapolation from one claim sample, excludes Vercel/hosting and other costs, and assumes the same prompt/evidence size and model; it is not a measured annual bill. The mixed-question mean would imply about $5.51/year, but is less representative of claims.
+| Five live `/api/ask` requests: calls, tokens, seconds, USD | **Not measured.** DNS failed here and the deployed version is unconfirmed. Previous note's measurements were for the old tool-loop graph. |
+| Approximate yearly model cost for 4,000 claims | **Not computable.** After five live samples, use `4,000 × mean USD/request`, actual token counts, deployed model pricing, and the claim mix. |
+| Live URL | [project-pfizer.vercel.app](https://project-pfizer.vercel.app) is recorded in the prior note; DNS failed here on 24 Nov 2026. |
+| Host / plan | Vercel; Hobby was user-reported but is not verifiable in this repository. |
+| Environment variables | `OPENROUTER_API_KEY` required; `MODEL` optional, defaults to `openai/gpt-4o-mini` ([`.env.example`](../starter/.env.example), [`agent/llm.py`](../starter/agent/llm.py)). Deployed values unavailable. |
+| Region | No `regions` in `vercel.json`; actual region unverified without dashboard access. |
 
 ## Next
 
-- Capture per-request duration, model, token use, and cost in runtime telemetry.
-- Verify the production Vercel region and environment-variable configuration in the project dashboard.
-- Add explicit API error and tool-loop exhaustion handling with tests before operational use.
+- Add and test explicit provider timeouts and model-error fallback; test timeout routes and route preservation.
+- Capture model ID, token counts, per-request seconds, and price for five live requests; then calculate the 4,000-claim annual estimate and verify Vercel plan/region.
+- Decide whether Kavita's supply-chain view is a separate future workflow; it is not part of this claims pilot today.

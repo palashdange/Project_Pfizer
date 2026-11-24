@@ -10,6 +10,9 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
+from typing import Optional
+
+from agent.batch import run_batch
 from agent.graph import run_question
 
 app = FastAPI(title="Project Sankalp pilot")
@@ -18,6 +21,10 @@ ROOT = Path(__file__).resolve().parent
 
 class Ask(BaseModel):
     question: str
+
+
+class Batch(BaseModel):
+    month: Optional[str] = None  # "YYYY-MM"; omit for every month in the register
 
 
 @app.get("/api/health")
@@ -33,6 +40,15 @@ def ask(body: Ask):
         return run_question(body.question)
     except ValueError as err:  # missing key or bad input: say so instead of a bare 500
         return JSONResponse({"error": str(err)}, status_code=503)
+
+
+@app.post("/api/batch")
+def batch(body: Batch):
+    """Route every register claim in a month (or all months) in code and total the rupees by route."""
+    try:
+        return run_batch(body.month)
+    except ValueError as err:  # unknown month: say so instead of a bare 500
+        return JSONResponse({"error": str(err)}, status_code=400)
 
 
 @app.get("/")

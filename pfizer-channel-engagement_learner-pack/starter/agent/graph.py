@@ -481,6 +481,22 @@ def check_pasted_fields(state: State) -> dict:
     return {"checks": {"pasted_fields": result}}
 
 
+def at_stake_inr(claim: dict, sku: Optional[dict]) -> Optional[Decimal]:
+    """Rupees at stake: the register claim value, or quantity x PTS when it is blank (§5.7)."""
+    raw = str(claim.get("claim_value_inr") or "").replace(",", "").strip()
+    if raw:
+        try:
+            return Decimal(raw)
+        except InvalidOperation:
+            pass
+    try:
+        qty = parse_pack_quantity(claim.get("qty_claimed", ""))
+        pts = Decimal(str((sku or {}).get("pts_inr") or "").replace(",", ""))
+    except (ValueError, InvalidOperation):
+        return None
+    return (qty * pts).quantize(Decimal("0.01"))
+
+
 def decide(state: State) -> dict:
     """Apply the deterministic route priority; never ask the model for a decision."""
     checks = state["checks"]
@@ -499,6 +515,7 @@ def decide(state: State) -> dict:
         "found": True,
         "claim_no": claim.get("claim_no"),
         "route": route,
+        "at_stake_inr": (lambda v: format(v, "f") if v is not None else None)(at_stake_inr(claim, state["records"].get("sku"))),
         "checks": checks,
         "records": {
             "claim": _source_row(claim),
@@ -593,6 +610,30 @@ builder.add_edge(list(CHECK_NODES), "decide")
 builder.add_edge("decide", "explain")
 builder.add_edge("explain", END)
 graph = builder.compile()
+
+# Code-only review graph for batch mode: the same lookup, checks and decide nodes, with no
+# parse or explain step, so a month of claims runs without any model call.
+review_builder = StateGraph(State)
+review_builder.add_node("lookup", lookup)
+review_builder.add_node("dispatch_checks", dispatch_checks)
+for node in CHECK_NODES:
+    review_builder.add_node(node, globals()[node])
+    review_builder.add_edge("dispatch_checks", node)
+review_builder.add_node("decide", decide)
+review_builder.add_edge(START, "lookup")
+review_builder.add_conditional_edges("lookup", _after_lookup, {"dispatch_checks": "dispatch_checks", END: END})
+review_builder.add_edge(list(CHECK_NODES), "decide")
+review_builder.add_edge("decide", END)
+review_graph = review_builder.compile()
+
+
+def review_claim(claim_no: str) -> dict:
+    """Route one register claim in code only (no model call); used by batch mode."""
+    final = review_graph.invoke({
+        "input_text": claim_no, "claim_no": claim_no, "email_id": "", "records": {}, "checks": {},
+        "route": "", "explanation": "", "evidence": [], "model_calls": 0, "elapsed_seconds": 0.0,
+    })
+    return {"route": final.get("route", "NEEDS_PERSON"), "checks": final.get("checks", {})}
 
 
 def run_question(question: str) -> dict:

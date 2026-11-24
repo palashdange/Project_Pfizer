@@ -13,7 +13,7 @@ test("weekly review page exposes read-only status and supported checks", () => {
   assert.match(html, /Read-only decision support/);
   assert.match(html, /No ERP\/WMS write-back/);
   assert.match(html, /Human review required/);
-  assert.match(html, /evidence\.js\?v=12/);
+  assert.match(html, /evidence\.js\?v=13/);
   assert.match(html, /app\.js\?v=9/);
   assert.match(html, /Review a claim/);
   assert.match(html, /Inspect a claim email/);
@@ -302,4 +302,41 @@ test("every claim route names the person who decides, and not-found names nobody
   assert.match(decisionOwner("RECOMMEND_CREDIT"), /^Recommendation only/);
   assert.match(decisionOwner("NOT_FOUND"), /nothing to decide/);
   assert.equal(decisionOwner(undefined), "");
+});
+
+test("batch view shows four rupee cards, per-year basis, and cited claim rows", () => {
+  const { renderBatch, formatLakh } = require("../public/batch.js");
+  const html = renderBatch({
+    period: "2025-01", months: 1, claims_reviewed: 2,
+    route_counts: { RECOMMEND_CREDIT: 1, REJECT: 1, NEEDS_PERSON: 0 },
+    period_inr: { caught: "1000.00", leakage: "1000.00", at_risk: "0.00", would_block: "0.00", recommend_credit: "50.00" },
+    annualised_inr: { caught: "12000.00", leakage: "12000.00", at_risk: "0.00", would_block: "0.00", recommend_credit: "600.00" },
+    missing_value_claims: 0, source: "expiry_claims.csv",
+    claims: [{ claim_no: "CLM-1", claim_date: "01-01-2025", claim_type: "Expired", register_status: "Credited", route: "REJECT", at_stake_inr: "1000.00", first_problem: "window: 94 days (CO-POL-014 §5.2)", source: "expiry_claims.csv:765" }],
+  });
+  assert.match(html, /Leakage stopped \/ year/);
+  assert.match(html, /At risk: needs a person \/ year/);
+  assert.match(html, /At risk, not saved/);
+  assert.match(html, /× 12 \(one month\)/);
+  assert.match(html, /expiry_claims\.csv:765/);
+  assert.match(html, /§5\.2/);
+  assert.equal(formatLakh("1994487.59"), "₹19.94 L");
+  assert.equal(formatLakh("14613647.78"), "₹1.46 cr");
+});
+
+test("claim review shows rupees at stake with its source row", () => {
+  const html = renderEvidence({
+    result_type: "claim_review", claim_no: "CLM-2404-04177", route: "RECOMMEND_CREDIT", at_stake_inr: "3936.80",
+    records: { claim: { file: "expiry_claims.csv", source_row: 2 } }, checks: {},
+  });
+  assert.match(html, /₹ at stake/);
+  assert.match(html, /expiry_claims\.csv:2/);
+});
+
+test("batch month table shows 15 claims up front and the rest behind a toggle", () => {
+  const { renderBatch } = require("../public/batch.js");
+  const claims = Array.from({ length: 20 }, (_, i) => ({ claim_no: `CLM-${i}`, route: "RECOMMEND_CREDIT", source: `expiry_claims.csv:${i + 2}` }));
+  const html = renderBatch({ months: 1, claims, annualised_inr: {}, period_inr: {}, route_counts: {} });
+  assert.match(html, /Show the other 5 claims/);
+  assert.equal((html.match(/<tr>\s*<td>CLM-/g) || []).length, 20);
 });

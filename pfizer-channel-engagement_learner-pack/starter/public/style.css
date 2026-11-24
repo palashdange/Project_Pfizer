@@ -90,6 +90,14 @@ th { position: sticky; top: 0; background: #f1f5fa; color: #344054; font-size: 1
 tbody tr:last-child td { border-bottom: 0; }
 tbody tr:hover { background: #f8faff; }
 pre { overflow: auto; max-height: 420px; background: #fff; border: 1px solid #e1e6ef; border-radius: 8px; padding: 12px; white-space: pre-wrap; font-size: 12px; }
+.batch-card { margin-top: 28px; }
+.batch-controls { display: flex; gap: 9px; margin-top: 12px; }
+.batch-controls select { flex: 1; min-width: 0; padding: 10px 12px; border: 1px solid #cbd2df; border-radius: 8px; font-size: 15px; background: white; }
+.batch-card .metric strong { font-size: 22px; }
+.at-stake { margin: 0 0 10px; font-weight: 650; }
+.more-claims { margin-top: 10px; }
+.more-claims summary { cursor: pointer; color: #123b70; font-weight: 650; padding: 6px 0; }
+
 @media (max-width: 620px) {
   main { padding: 24px 14px 40px; }
   .page-header { flex-direction: column; gap: 12px; }
@@ -99,6 +107,7 @@ pre { overflow: auto; max-height: 420px; background: #fff; border: 1px solid #e1
   .scenario-heading, .scenario-item { align-items: stretch; flex-direction: column; }
   .scenario-action { align-self: flex-start; }
   .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .batch-controls { flex-direction: column; }
   .fulfillment-metrics { grid-template-columns: 1fr; }
   .evidence-fields, .stock-columns { grid-template-columns: 1fr; }
   .stock-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }

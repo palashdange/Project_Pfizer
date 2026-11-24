@@ -1,101 +1,87 @@
-# Project Sankalp: implemented pilot architecture
+# Project Sankalp: architecture note
 
-**As built · checked against `starter/` on 24 November 2026**
+**As built · checked against `starter/agent/graph.py` on 25 November 2026 · Fictional training case**
 
-## Users and weekly decision
+## 1. User, decision, and the split
 
-**Primary user:** Commercial Finance claims executive; owner Neha Bansal (Controller). Weekly decision: review a claim and recommend credit, reject under a hard rule, or route to a person. The UI handles one input at a time and does not issue credit. This follows Neha's request for pre-checks for her two-person team ([interviews, p. 2](../data-pack/04_stakeholder_interview_notes.pdf); [Discovery note §4](Discovery_note.md#4-pilot-user-and-plan-for-the-money)).
+**User:** the Commercial Finance claims executive (owner Neha Bansal, Controller). **Weekly decision:** for each claim in the register, recommend credit, reject, or send it to a person. The pilot is read-only: it posts no credit notes and writes nothing to SAP or WMS.
 
-**Secondary user:** Kavita Rao (Head of Supply Chain), who needs expiry-risk batches and short CFAs ([interviews, p. 2](../data-pack/04_stakeholder_interview_notes.pdf)). That workflow is **not implemented** here. Deterministic checks, row citations, and read-only operation reflect the case accuracy requirement and preserve human credit authority ([UI](../starter/public/index.html), [API](../starter/app.py)).
+**Code decides; the model only parses and explains.** Every rule, date, join and sum runs in Python. Policy numbers live in [`config.py`](../starter/config.py) with their CO-POL-014 clause, and the date and quantity rules are in [`agent/rules.py`](../starter/agent/rules.py). The model is called in at most two places, and neither one can change the route.
 
-## Graph and nodes
-
-The diagram follows the nodes, conditional routes, and fan-out/fan-in edges in [`starter/agent/graph.py`](../starter/agent/graph.py). `dispatch_checks` is a synchronization/fan-out node. The six checks run in parallel and join before `decide`.
+## 2. Graph
 
 ```mermaid
 flowchart TD
-    S([START]) --> P[parse_input<br/>code IDs or model field extraction]
-    P -->|claim identified| L[lookup<br/>Python data lookups]
-    P -->|no claim identified| X[explain]
-    L -->|claim not found| E([END])
-    L -->|claim found| F[dispatch_checks]
-    F --> W[check_window]
-    F --> Q[check_quantity]
-    F --> D[check_duplicate]
-    F --> I[check_invoice_ref]
-    F --> B[check_batch_expiry]
-    F --> V[check_value]
-    W --> J[decide]
-    Q --> J
-    D --> J
-    I --> J
-    B --> J
-    V --> J
-    J --> X
-    X --> E
+    S([START]) --> P[parse_input]
+    P -->|claim ID found| L[lookup]
+    P -->|no single claim| E[explain]
+    L -->|claim not in register| X([END · NOT_FOUND])
+    L --> D[dispatch_checks]
+    D --> C1[check_window §5.2] & C2[check_quantity §5.5] & C3[check_duplicate §5.6] & C4[check_invoice_ref §5.4] & C5[check_batch_expiry] & C6[check_value §5.7]
+    C1 & C2 & C3 & C4 & C5 & C6 --> DEC[decide]
+    DEC --> E --> Z([END])
 ```
 
-| Node | Code or model | Why it runs |
+| Node | Code or model | Why | File |
+|---|---|---|---|
+| `parse_input` | Code first: regex for `CLM-YYMM-NNNNN` and `EML-NNN`. **Model only if neither is present:** structured output into `ClaimExtraction`, which has no decision field (`extra="forbid"`). | Claim and email IDs are exact, so a model adds risk. Messy free text needs extraction. | `agent/graph.py`, `agent/prompts.py` |
+| `lookup` | Code | Fetches the claim, batch, SKU, stockist, sales rows and credited claims once, each with `source_file` and `source_row`. | `agent/graph.py`, `agent/data.py` |
+| six `check_*` nodes | Code, in parallel within one superstep | Each check returns `pass`, `fail` or `missing`, plus a reason, a clause and the cited rows. | `agent/graph.py`, `agent/rules.py` |
+| `decide` | Code | Applies a fixed route priority (below). | `agent/graph.py` |
+| `explain` | **Model**, with a code guard | Writes 3–5 plain sentences. The guard rejects any number not present in the checks, any approval wording, or the wrong sentence count, and swaps in a code-written fallback. | `agent/graph.py`, `agent/prompts.py` |
+
+## 3. Checks, data and clauses
+
+| Check | CSVs it reads | Rule | Clause |
+|---|---|---|---|
+| `window` | `expiry_claims`, `batch_master` (expiry claims); `primary_sales` invoice date (breakage, short supply) | The type comes from the dates, not the label. Near expiry: −90 to 0 days; expired: 0 to +90; transit: ≤ 7 days after invoice. Inclusive. | §5.2 |
+| `quantity` | `primary_sales`, all rows for the stockist and batch | Claimed packs ≤ invoiced + free packs. | §5.5 |
+| `duplicate` | `expiry_claims`, credited rows | An earlier credited claim with the same stockist, batch and quantity is a fail. | §5.6 |
+| `invoice_ref` | `expiry_claims`, `primary_sales` | The reference must be present and match a sales row. If not, `missing`: §5.4 needs a ledger check and the Area Manager's written approval, which are not in the data. | §5.4 |
+| `batch_expiry` | `expiry_claims`, `batch_master` | The claimed expiry must equal the batch-master expiry. | §5.2 / §5.3 |
+| `value` | `expiry_claims`, `sku_master` | Claim value = quantity × PTS, using Decimal arithmetic. | §5.7 |
+
+**Decide rules, in order:** (1) any `fail` on window, duplicate or quantity → **REJECT**; (2) the input was an email (`EML-`) → **NEEDS_PERSON**, because correspondence is untrusted; (3) any other `fail` or `missing` → **NEEDS_PERSON**; (4) otherwise → **RECOMMEND_CREDIT**. If the claim isn't in the register → **NOT_FOUND**, with no model call.
+
+**Whole register, code only** (4,503 claim rows, Apr 2024–Sep 2026): 2,112 recommend credit, 532 reject, 1,859 needs a person. Most of the needs-a-person claims lack an invoice reference (1,823) or have a batch that isn't in the master (970). The two groups overlap.
+
+## 4. Failure handling
+
+| Failure | Response | Test |
 |---|---|---|
-| `parse_input` | Python + model | Match IDs in code; model extracts fields only. Prompt: [`agent/prompts.py`](../starter/agent/prompts.py). |
-| `lookup` | Python + [`agent/data.py`](../starter/agent/data.py) | Fetch claim and related master, billing, and prior-credit rows. |
-| `dispatch_checks` | Python | Fan out the six checks. |
-| `check_window` | Python + [`agent/rules.py`](../starter/agent/rules.py) | Apply filing windows. |
-| `check_quantity` | Python + rules | Compare claimed to invoiced + free packs. |
-| `check_duplicate` | Python + rules | Match earlier credited stockist/batch/quantity. |
-| `check_invoice_ref` | Python | Match invoice reference to sales. |
-| `check_batch_expiry` | Python + rules | Compare claim and batch-master expiry. |
-| `check_value` | Python + rules | Compare claim value to quantity × PTS; mismatch → person. |
-| `decide` | Python | Apply fixed route priority. |
-| `explain` | Model + Python | Explain route/checks; validate output and fall back to code. |
+| Unknown claim ID | `NOT_FOUND`, 0 model calls | `test_ask_not_found_does_not_call_model`; check set `not_found_01` |
+| Email tells the system to skip checks (EML-017) | Body tagged `untrusted_correspondence`; route forced to `NEEDS_PERSON`; "APPROVED" text is stripped | `test_email_prompt_injection_is_untrusted_and_cannot_return_approval`, `test_ask_keeps_eml_017_untrusted_and_never_approves` |
+| Free text with no claim number | `NEEDS_PERSON` (`input_parse: missing`) | `test_unidentifiable_free_text_is_routed_to_a_person` |
+| Provider down or key missing during parse | Exception caught → `NEEDS_PERSON` | `test_provider_failure_during_parse_routes_to_a_person` |
+| Provider down during explain | Code route kept; code fallback text | `test_provider_failure_during_explain_keeps_code_route_and_uses_fallback` |
+| Model adds a number or approval wording | Fallback explanation | `test_model_explanation_cannot_add_numbers_not_present_in_checks` |
+| Value ≠ quantity × PTS | `value: fail` → `NEEDS_PERSON` | `test_claim_value_mismatch_is_sent_to_a_person` |
+| Provider hangs | **Gap:** no explicit model or request timeout is configured; the Vercel function limit is the only cap | None yet |
+| Batch, sales or invoice row missing; bad date or quantity | Check returns `missing` → `NEEDS_PERSON`, never a guess | check set `missing_batch_01`, `blank_invoice_01/02`; date and quantity tests in `test_rules.py` |
 
-## Lookups, checks, and policy references
+`pytest -q`: **89 passed**; the frontend Node tests pass **16/16** (`test_frontend.js` and `test_evidence.js`). The tests cover every boundary in `rules.py` (day 90, day 7, the 60% shelf-life threshold, the 3% cap, PTS value). `agent/tools.py` holds the earlier tool-loop functions. They are still unit-tested but **not wired into the graph**.
 
-[`agent/data.py`](../starter/agent/data.py) caches and de-duplicates CSVs and adds source rows. Rules/clauses are in [`config.py`](../starter/config.py) and [`agent/rules.py`](../starter/agent/rules.py). The legacy functions in `agent/tools.py` are not called by this graph.
+## 5. Accuracy
 
-| Lookup/check | CSV files read | Config policy clause |
+| Version | Check set (16 hand-checked) | Held-out (6, labelled after the build) |
 |---|---|---|
-| Email lookup | `claim_emails.csv` | Untrusted correspondence; no decision clause. |
-| Claim / batch / SKU / stockist | `expiry_claims.csv`; `batch_master.csv`; `sku_master.csv`; `stockist_master.csv` | Lookup only. |
-| Invoice sales / prior credits | `primary_sales.csv`; `expiry_claims.csv` | Lookup only. |
-| `check_window` | `expiry_claims.csv` + `batch_master.csv` (expiry); `expiry_claims.csv` + `primary_sales.csv` (transit) | CO-POL-014 §5.2 |
-| `check_quantity` | `expiry_claims.csv`, `primary_sales.csv` | CO-POL-014 §5.5 |
-| `check_duplicate` | `expiry_claims.csv` | CO-POL-014 §5.6 |
-| `check_invoice_ref` | `expiry_claims.csv`, `primary_sales.csv` | CO-POL-014 §5.4 |
-| `check_batch_expiry` | `expiry_claims.csv`, `batch_master.csv` | `BATCH_EXPIRY_POLICY_CLAUSE` = CO-POL-014 §5.2 (`config.py`) |
-| `check_value` | `expiry_claims.csv`, `sku_master.csv` | CO-POL-014 §5.7 |
+| Starter tool loop (commit `a22bdcc`) | 6/16 | — |
+| Claims graph (current) | **16/16** | **3/6** |
 
-## Failure paths and coverage
+Run `python checks/run_checks.py`; it scores held-out (`holdout_`) cases separately. The 16/16 also holds on the live URL. **Held-out failures (known gaps):** (a) a pasted message that names a claim *and* states a different expiry or value is credited from the register; the pasted fields aren't compared against it. (b) A repeat of an earlier **pending** claim (CLM-2608-02222 → CLM-2609-04449, same stockist, batch and 547 packs) is missed, because `check_duplicate` only looks at credited claims. Passed: the day-90 boundary, a label that contradicts the dates, and a pasted email with no claim ID.
 
-| Situation | Implemented behavior | Test coverage |
-|---|---|---|
-| Claim ID not found | `NOT_FOUND`, with no check or explanation model call. | `test_claim_graph_covers_recommend_reject_needs_person_and_not_found` (`tests/test_graph.py`); `test_ask_not_found_does_not_call_model` (`tests/test_api.py`). |
-| Missing or conflicting evidence | Missing checks and non-priority mismatches route to `NEEDS_PERSON`; failed window, duplicate, or quantity checks route to `REJECT`. | `test_claim_graph_covers_recommend_reject_needs_person_and_not_found`; `test_claim_value_mismatch_is_sent_to_a_person` (`tests/test_graph.py`). |
-| EML-017 prompt injection | Email is marked `untrusted_correspondence`; claimed approvals are not followed. | `test_email_prompt_injection_is_untrusted_and_cannot_return_approval` (`tests/test_graph.py`); `test_ask_keeps_eml_017_untrusted_and_never_approves` (`tests/test_api.py`). |
-| Model extraction/explanation error | Exceptions route unparsed input to a person or use a code-generated explanation while preserving route. | Behavior exists in `agent/graph.py`; **no dedicated provider-exception test currently covers the fallback**. |
-| Request timeout | No explicit model/API/graph timeout is configured. | **Not implemented; no timeout test.** |
+## 6. Speed and cost (measured 25 Nov 2026, `openai/gpt-4o-mini` via OpenRouter)
 
-Current local verification: `pytest -q` passed **87 tests**; frontend Node tests passed **16/16**. The focused model-error fallback and timeout gaps above remain open.
+| Input | Route | Model calls | Tokens in / out | Seconds | Cost (USD) |
+|---|---|---:|---:|---:|---:|
+| CLM-2404-04177 (clean) | RECOMMEND_CREDIT | 1 | 825 / 56 | 2.7 | 0.000157 |
+| CLM-2605-04488 (duplicate) | REJECT | 1 | 848 / 72 | 1.9 | 0.000170 |
+| CLM-2412-00383 (outside window) | REJECT | 1 | 824 / 66 | 1.8 | 0.000163 |
+| CLM-2404-04181 (no invoice) | NEEDS_PERSON | 1 | 764 / 67 | 1.9 | 0.000155 |
+| Free text, no claim ID | NEEDS_PERSON | 2 | 520 / 96 | 3.5 | 0.000136 |
 
-## Check set
+The figures are the mean of 2 runs each, measured with LangChain's usage callback and priced at OpenRouter's list rates ($0.15 per M input tokens, $0.60 per M output). **About 4,000 claims a year** (interview notes, p. 2) × ~$0.00016 ≈ **$0.65 a year** in model cost. Hosting costs are excluded. Across the 16-case run, claim reviews took 1.4–3.6 s each, and NOT_FOUND took 0.005 s. Three live `/api/ask` calls took 1.9–3.7 s.
 
-Baseline commit `a22bdcc` records **6/16**: the evidence-only graph had no route field, so recommend/reject could not be evaluated deterministically. Current [`checks/run_checks.py`](../starter/checks/run_checks.py) reads `route` and scored **16/16 locally** on those cases. No failures remain; this is not a live score.
+## 7. Deployment
 
-## Live cost, speed, and deployment
-
-The graph returns model-call count and elapsed seconds, but captures no tokens or provider cost ([`agent/graph.py`](../starter/agent/graph.py), [`agent/llm.py`](../starter/agent/llm.py)). The live host did not resolve here; five live samples are unavailable.
-
-| Requested measurement | Verified status |
-|---|---|
-| Five live `/api/ask` requests: calls, tokens, seconds, USD | **Not measured.** DNS failed here and the deployed version is unconfirmed. Previous note's measurements were for the old tool-loop graph. |
-| Approximate yearly model cost for 4,000 claims | **Not computable.** After five live samples, use `4,000 × mean USD/request`, actual token counts, deployed model pricing, and the claim mix. |
-| Live URL | [project-pfizer.vercel.app](https://project-pfizer.vercel.app) is recorded in the prior note; DNS failed here on 24 Nov 2026. |
-| Host / plan | Vercel; Hobby was user-reported but is not verifiable in this repository. |
-| Environment variables | `OPENROUTER_API_KEY` required; `MODEL` optional, defaults to `openai/gpt-4o-mini` ([`.env.example`](../starter/.env.example), [`agent/llm.py`](../starter/agent/llm.py)). Deployed values unavailable. |
-| Region | No `regions` in `vercel.json`; actual region unverified without dashboard access. |
-
-## Next
-
-- Add and test explicit provider timeouts and model-error fallback; test timeout routes and route preservation.
-- Capture model ID, token counts, per-request seconds, and price for five live requests; then calculate the 4,000-claim annual estimate and verify Vercel plan/region.
-- Decide whether Kavita's supply-chain view is a separate future workflow; it is not part of this claims pilot today.
+The app runs on Vercel Hobby at [project-pfizer.vercel.app](https://project-pfizer.vercel.app) (health: `/api/health`). The root directory is `pfizer-channel-engagement_learner-pack/starter`. FastAPI serves `/api/*` and `public/` is served as static files. The env vars are `OPENROUTER_API_KEY` and `MODEL`. **Region:** on 25 Nov the live function ran in `iad1` (US East), per the `x-vercel-id` header. `vercel.json` now pins `"regions": ["bom1"]` (Mumbai), which takes effect on the next deploy from `master`. Pushes to `master` deploy automatically.

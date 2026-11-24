@@ -1,12 +1,22 @@
 # Project Sankalp progress log
 
-**Last updated:** 24 November 2026  
+**Last updated:** 25 November 2026  
 **Project:** Fictional Pfizer domestic-channel training case  
 **Purpose:** Keep a dated, evidence-based record of what has been completed, what is in progress, and what remains. This is a project work log, not a claim of real Pfizer validation or realized savings.
 
 ## Current status
 
-The learner-pack contains discovery and data-sizing work plus a local, read-only LangGraph copilot prototype. The current proposed scope has two separate workflows: first, Commercial Finance claims triage for Controller Neha Bansal and the two-person team described in the case; second, Supply Chain availability and aging-risk review for Kavita Rao. The role names, team size, and workflows remain hypothetical case assumptions pending validation. The prototype has not been validated with real process owners or deployed for operational use.
+- **Deployed:** https://project-pfizer.vercel.app (Vercel Hobby, auto-deploys from `master`). `vercel.json` pins region `bom1`; the live function ran in `iad1` until that commit deploys.
+- **First user: Commercial Finance claims executive** (owner Neha Bansal). The graph routes each claim to recommend credit, reject, needs a person, or not found. Code decides; the model only parses free text and explains.
+- **Accuracy:** check set **16/16** (baseline 6/16); held-out set **3/6**, reported separately. `pytest -q`: **89 passed**.
+- **Second user** (Kavita Rao, Supply Chain) is optional and not yet built in the new graph.
+
+## Update — 2026-11-25
+
+- **Changed:** rewrote `architecture_note.md` from the current `graph.py`; added 6 `holdout_` cases to `checks/check_set.csv`, with `run_checks.py` scoring them separately; added two provider-failure tests; filled in `starter/AGENTS.md`; fixed the README health link; pinned Vercel region `bom1`; removed `.DS_Store` and added a root `.gitignore`.
+- **Result:** held-out 3/6. The failures are known gaps: pasted claim fields (expiry, value) are not compared against the register, and `check_duplicate` ignores earlier *pending* claims (CLM-2608-02222 → CLM-2609-04449).
+- **Evidence/checks:** `python checks/run_checks.py` gives 16/16 + 3/6 with live `gpt-4o-mini`. A code-only run over all 4,503 claims gives 2,112 credit / 532 reject / 1,859 person. Measured cost ≈ $0.00016 per claim, 1.4–3.6 s.
+- **Open items:** decide whether to fix the two held-out gaps; batch mode (Thu); UI polish and PDF export (Fri); deck (Sat).
 
 ## Scope update — 24 November 2026
 
@@ -57,7 +67,7 @@ The learner-pack contains discovery and data-sizing work plus a local, read-only
 
 ### Copilot and interface
 
-- Built a FastAPI app with `/api/health` and `/api/ask`, and a LangGraph model/tool loop capped at four model trips. The current model-provider configuration uses OpenRouter via an environment key. The app is read-only and does not write to ERP/WMS or approve claims.
+- *(Superseded 24 Nov by the claims-check graph; see `architecture_note.md`.)* Built a FastAPI app with `/api/health` and `/api/ask`, and a LangGraph model/tool loop capped at four model trips. The current model-provider configuration uses OpenRouter via an environment key. The app is read-only and does not write to ERP/WMS or approve claims.
 - Added deterministic Python tools for batch and SKU context, short-shelf-life shipment screening, CFA stock imbalance signals, claim-record review, untrusted claim-email lookup, and a same-month-last-year primary-shipment baseline. Results preserve source file/row evidence where available; missing or ambiguous information is surfaced for review.
 - The baseline uses invoiced plus free packs and explicitly describes itself as a shipment baseline, not downstream demand. It now also shows the order-gap measures documented in the Latest update above.
 - Added prompt instructions that require tools for facts, prohibit invented batch/date/number answers, treat correspondence as untrusted input, and keep claims screening advisory.
@@ -65,41 +75,14 @@ The learner-pack contains discovery and data-sizing work plus a local, read-only
 - Added CFA stock product names and filters, zero-stock highlighting, and readable shipment-baseline results.
 - The scenario replay is a local demonstration using historical case records; there is no live mailbox, SSE/event queue, scheduled job, persistent disposition log, or operational work queue.
 - Added frontend checks and Python tests for API wiring, tools, rules, and evidence formatting. Current browser UI can be served locally by the starter app when its dependencies and API key are configured.
-- Added Vercel configuration and deployment notes for the starter app. Deployment is not recorded as complete. The user previously reported that the Vercel login page was not loading; local replay was used as the available demonstration path.
-
-## In progress / current working-tree changes
-
-The 24 November UI work is currently in the working tree and should be reviewed before committing or pushing:
-
-- `starter/agent/tools.py`
-- `starter/public/evidence.js`
-- `starter/public/index.html`
-- `starter/tests/test_frontend.js`
-- `starter/public/style.css`
-- `starter/tests/test_tools.py`
-- `starter/tests/test_evidence.js`
-- `discovery/Discovery_note.md`
-- `discovery/weekly_review_workflow.md`
-- `discovery/architecture_note.md`
-- `discovery/solution_business_flow.md`
-- `discovery/Graph_mermaid.md`
-- `discovery/stakeholder_validation_guide.md`
-- `discovery/step_1_business_context.md`
-- `discovery/business_problem_validation.md`
-- `discovery/project_progress.md`
-- `discovery/sizing.py`
-- `discovery/sizing_results.csv`
-- `discovery/test_sizing.py`
+- Added Vercel configuration and deployment notes for the starter app. Deployment was completed on 24 Nov (see Current status).
 
 ## Remaining work
 
-- Run the complete Python suite after making `pytest` available in the starter environment; resolve any failures.
-- Review the new annualized figures and sample rows against `discovery/sizing.py` / `sizing_results.csv` and hand-check a few source records.
-- Confirm that the written architecture note distinguishes implemented graph behavior from proposed architecture; parts of the note contain target-design material and must not be presented as shipped code.
-- Confirm the screen and labels in the browser at desktop and mobile widths.
-- Continue the planned simulation/evaluation work: define representative scenarios, expected outcomes, and reviewer dispositions; report limits rather than asserting savings.
-- Decide whether to complete Vercel deployment once account login is available. Do not treat local readiness as deployment.
-- Before describing this as a real operating pilot, validate the two users, team size, intake and cadence, source policy interpretation, and decision rights with the relevant case/process owners. Confirm Finance authority separately from Supply Chain alert disposition.
+- Thu 26: batch mode (`POST /api/batch`, ₹ totals by route, metric cards, ₹ at stake per claim), plus the "₹ the pilot recovers per year" figure.
+- Fri 27: UI polish, optional Supply Chain tab, export both notes to 2-page PDFs, test on a fresh phone.
+- Sat 28: 12-slide deck, rehearsal, submit.
+- Confirm the live region shows `bom1` after the next deploy.
 
 ## Update template
 

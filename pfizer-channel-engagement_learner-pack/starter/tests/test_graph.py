@@ -106,3 +106,28 @@ def test_unidentifiable_free_text_is_routed_to_a_person(monkeypatch):
     assert result["route"] == "NEEDS_PERSON"
     assert result["checks"]["input_parse"]["status"] == "missing"
     assert result["model_calls"] == 2
+
+
+def test_provider_failure_during_parse_routes_to_a_person(monkeypatch):
+    def broken_llm():
+        raise RuntimeError("provider down")
+
+    monkeypatch.setattr(graph_module, "get_llm", broken_llm)
+
+    result = graph_module.run_question("Please check the note from our stockist.")
+
+    assert result["route"] == "NEEDS_PERSON"
+    assert "RuntimeError" in result["checks"]["input_parse"]["reason"]
+
+
+def test_provider_failure_during_explain_keeps_code_route_and_uses_fallback(monkeypatch):
+    def broken_llm():
+        raise RuntimeError("provider down")
+
+    monkeypatch.setattr(graph_module, "get_llm", broken_llm)
+
+    result = graph_module.run_question("Review CLM-2605-04488")
+
+    assert result["route"] == "REJECT"
+    assert result["explanation"].startswith("Route: REJECT.")
+    assert "duplicate" in result["explanation"]

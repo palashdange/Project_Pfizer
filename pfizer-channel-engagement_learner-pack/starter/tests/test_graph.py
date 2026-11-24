@@ -175,3 +175,70 @@ def test_exact_repeat_of_credited_claim_is_still_rejected(monkeypatch):
 
     assert result["route"] == "REJECT"
     assert result["checks"]["duplicate"]["status"] == "fail"
+
+
+class PastedFieldsLLM(ExplainOnlyLLM):
+    """Return fixed extracted fields, as the structured-output model would."""
+
+    def __init__(self, **fields):
+        super().__init__()
+        self.fields = fields
+
+    def with_structured_output(self, schema):
+        return SimpleNamespace(invoke=lambda _messages: schema(**self.fields))
+
+
+def test_bare_claim_id_makes_no_extraction_call(monkeypatch):
+    monkeypatch.setattr(graph_module, "get_llm", lambda: ExplainOnlyLLM())
+
+    result = graph_module.run_question("Review expiry claim CLM-2404-04177 and show its source evidence.")
+
+    assert result["model_calls"] == 1  # explanation only
+    assert "pasted_fields" not in result["checks"]
+
+
+def test_pasted_value_that_differs_from_register_goes_to_a_person(monkeypatch):
+    monkeypatch.setattr(graph_module, "get_llm", lambda: PastedFieldsLLM(claim_value="Rs 64,400", qty="805"))
+
+    result = graph_module.run_question(
+        "From STK0024: claim CLM-2604-01611 for 805 packs, claim value Rs 64,400.")
+
+    assert result["route"] == "NEEDS_PERSON"
+    check = result["checks"]["pasted_fields"]
+    assert check["status"] == "review"
+    assert "claim_value: pasted Rs 64,400 vs register 57477.0" in check["reason"]
+    assert result["model_calls"] == 2
+
+
+def test_pasted_details_that_match_keep_the_code_route(monkeypatch):
+    monkeypatch.setattr(graph_module, "get_llm", lambda: PastedFieldsLLM(qty="38", expiry_claimed="30-09-2025"))
+
+    result = graph_module.run_question("Claim CLM-2404-04177: 38 packs, expiry 30-09-2025.")
+
+    assert result["route"] == "RECOMMEND_CREDIT"
+    assert result["checks"]["pasted_fields"]["status"] == "pass"
+
+
+def test_model_value_not_present_in_the_text_is_ignored(monkeypatch):
+    # The model "finds" a value the user never typed; code drops it instead of acting on it.
+    monkeypatch.setattr(graph_module, "get_llm", lambda: PastedFieldsLLM(claim_value="99999"))
+
+    result = graph_module.run_question("Claim CLM-2404-04177, 38 packs.")
+
+    assert "pasted_fields" not in result["checks"]
+    assert result["route"] == "RECOMMEND_CREDIT"
+
+
+def test_extraction_failure_on_pasted_details_goes_to_a_person(monkeypatch):
+    class BrokenExtractor(ExplainOnlyLLM):
+        def with_structured_output(self, schema):
+            def fail(_messages):
+                raise RuntimeError("provider down")
+            return SimpleNamespace(invoke=fail)
+
+    monkeypatch.setattr(graph_module, "get_llm", lambda: BrokenExtractor())
+
+    result = graph_module.run_question("Claim CLM-2404-04177, 38 packs, value Rs 3,936.80.")
+
+    assert result["route"] == "NEEDS_PERSON"
+    assert result["checks"]["pasted_fields"]["status"] == "missing"

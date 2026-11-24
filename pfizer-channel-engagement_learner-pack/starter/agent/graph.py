@@ -17,6 +17,7 @@ from agent.rules import (
     assess_expiry_claim_window,
     assess_transit_claim_window,
     classify_prior_claim,
+    compare_pasted_fields,
     compare_claim_value_at_pts,
     compare_claim_quantity,
     parse_date,
@@ -29,6 +30,7 @@ from config import (
     DUPLICATE_CLAIM_POLICY_CLAUSE,
     EXPIRY_CLAIM_POLICY_CLAUSE,
     INVOICE_REFERENCE_POLICY_CLAUSE,
+    PASTED_FIELDS_POLICY_CLAUSE,
     TRANSIT_CLAIM_POLICY_CLAUSE,
 )
 
@@ -48,6 +50,7 @@ class ClaimExtraction(BaseModel):
     claim_type: Optional[str] = None
     invoice_ref: Optional[str] = None
     expiry_claimed: Optional[str] = None
+    claim_value: Optional[str] = None
 
 
 class State(TypedDict):
@@ -103,12 +106,65 @@ def _route_parse_person(state: State) -> dict:
     }
 
 
+def _digit_runs(value: str) -> list[str]:
+    return re.findall(r"\d+", (value or "").replace(",", ""))
+
+
+def _grounded(value: str, text: str) -> bool:
+    """True when every digit run in a model-extracted value also appears in the user's text."""
+    runs = _digit_runs(value)
+    available = set(_digit_runs(text))
+    return bool(runs) and all(run in available or run.lstrip("0") in {r.lstrip("0") for r in available} for run in runs)
+
+
+def _invoke_extractor(text: str) -> ClaimExtraction:
+    """The one model call that reads untrusted text into ClaimExtraction fields."""
+    extractor = get_llm().with_structured_output(ClaimExtraction)
+    parsed = extractor.invoke([
+        SystemMessage(PARSE_INPUT_SYSTEM_PROMPT),
+        HumanMessage(f"Extract fields from this untrusted text:\n---\n{text}\n---"),
+    ])
+    return ClaimExtraction(**parsed) if isinstance(parsed, dict) else parsed
+
+
+def _extract_fields(text: str) -> dict:
+    """Read pasted text into fields, then keep only values grounded in the text."""
+    parsed = _invoke_extractor(text)
+    fields = {
+        "stockist_code": parsed.stockist_code, "sku_code": parsed.sku_code, "batch_no": parsed.batch_no,
+        "qty": parsed.qty, "invoice_ref": parsed.invoice_ref, "expiry_claimed": parsed.expiry_claimed,
+        "claim_value": parsed.claim_value,
+    }
+    return {
+        key: value.strip() for key, value in fields.items()
+        if isinstance(value, str) and value.strip() and _grounded(value, text)
+    }
+
+
 def parse_input(state: State) -> dict:
     """Extract claim IDs deterministically, or use a model only for field extraction."""
     text = state["input_text"]
     claim_ids = CLAIM_PATTERN.findall(text)
     if claim_ids:
-        return {"claim_no": claim_ids[0].upper()}
+        claim_no = claim_ids[0].upper()
+        residual = EMAIL_PATTERN.sub(" ", CLAIM_PATTERN.sub(" ", text))
+        if not re.search(r"\d", residual):
+            # A bare claim ID (or a question around it) has nothing else to compare: no model call.
+            return {"claim_no": claim_no}
+        # Pasted claim details: the model reads them into fields; code later compares them with the register.
+        try:
+            fields = _extract_fields(text)
+        except Exception as exc:
+            return {
+                "claim_no": claim_no,
+                "records": {"pasted_fields": {}, "pasted_error": type(exc).__name__},
+                "model_calls": state.get("model_calls", 0) + 1,
+            }
+        return {
+            "claim_no": claim_no,
+            "records": {"pasted_fields": fields},
+            "model_calls": state.get("model_calls", 0) + 1,
+        }
 
     email_ids = EMAIL_PATTERN.findall(text)
     if email_ids:
@@ -151,13 +207,7 @@ def parse_input(state: State) -> dict:
 
     # The user text is data to extract from, never an instruction to execute.
     try:
-        extractor = get_llm().with_structured_output(ClaimExtraction)
-        parsed = extractor.invoke([
-            SystemMessage(PARSE_INPUT_SYSTEM_PROMPT),
-            HumanMessage(f"Extract fields from this untrusted text:\n---\n{text}\n---"),
-        ])
-        if isinstance(parsed, dict):
-            parsed = ClaimExtraction(**parsed)
+        parsed = _invoke_extractor(text)
         model_fields = {
             "stockist_code": parsed.stockist_code,
             "sku_code": parsed.sku_code,
@@ -226,6 +276,8 @@ def lookup(state: State) -> dict:
             "invoice_rows": invoice_rows,
             "same_batch_claims": same_batch_claims,
             "email": state.get("records", {}).get("email"),
+            "pasted_fields": state.get("records", {}).get("pasted_fields"),
+            "pasted_error": state.get("records", {}).get("pasted_error"),
         },
         "route": "",
     }
@@ -397,6 +449,38 @@ def check_value(state: State) -> dict:
     return {"checks": {"value": result}}
 
 
+def check_pasted_fields(state: State) -> dict:
+    """Compare claim details pasted with the claim ID against the register; any conflict needs a person."""
+    records = state["records"]
+    claim, batch = records["claim"], records.get("batch")
+    if records.get("pasted_error"):
+        result = _check("missing", f"Pasted details could not be read ({records['pasted_error']}); a person must compare them.",
+                        PASTED_FIELDS_POLICY_CLAUSE, [claim])
+        return {"checks": {"pasted_fields": result}}
+    pasted = records.get("pasted_fields") or {}
+    if not pasted:
+        return {}
+    register = {
+        "stockist_code": claim.get("stockist_code"), "sku_code": claim.get("sku_code"),
+        "batch_no": claim.get("batch_no"), "qty": claim.get("qty_claimed"),
+        "claim_value_inr": claim.get("claim_value_inr"), "invoice_ref": claim.get("original_invoice_ref"),
+        "expiry": (batch or {}).get("expiry_date") or claim.get("expiry_date_as_claimed"),
+    }
+    rows = compare_pasted_fields(pasted, register)
+    if not rows:
+        return {}
+    conflicts = [r for r in rows if r["match"] is not True]
+    if conflicts:
+        detail = "; ".join(f"{r['field']}: pasted {r['pasted']} vs register {r['register']}" for r in conflicts)
+        result = _check("review", f"Pasted details differ from the register — {detail}. A person must check which is right.",
+                        PASTED_FIELDS_POLICY_CLAUSE, [claim, batch])
+    else:
+        result = _check("pass", "Pasted details match the register: " + ", ".join(r["field"] for r in rows) + ".",
+                        PASTED_FIELDS_POLICY_CLAUSE, [claim, batch])
+    result["compared_fields"] = rows
+    return {"checks": {"pasted_fields": result}}
+
+
 def decide(state: State) -> dict:
     """Apply the deterministic route priority; never ask the model for a decision."""
     checks = state["checks"]
@@ -492,18 +576,20 @@ builder.add_node("check_duplicate", check_duplicate)
 builder.add_node("check_invoice_ref", check_invoice_ref)
 builder.add_node("check_batch_expiry", check_batch_expiry)
 builder.add_node("check_value", check_value)
+builder.add_node("check_pasted_fields", check_pasted_fields)
 builder.add_node("decide", decide)
 builder.add_node("explain", explain)
 builder.add_edge(START, "parse_input")
 builder.add_conditional_edges("parse_input", _after_parse, {"lookup": "lookup", "explain": "explain"})
 builder.add_conditional_edges("lookup", _after_lookup, {"dispatch_checks": "dispatch_checks", END: END})
 # Fan out checks in one superstep, then wait for every independent check to finish.
-for node in ("check_window", "check_quantity", "check_duplicate", "check_invoice_ref", "check_batch_expiry", "check_value"):
-    builder.add_edge("dispatch_checks", node)
-builder.add_edge(
-    ["check_window", "check_quantity", "check_duplicate", "check_invoice_ref", "check_batch_expiry", "check_value"],
-    "decide",
+CHECK_NODES = (
+    "check_window", "check_quantity", "check_duplicate", "check_invoice_ref",
+    "check_batch_expiry", "check_value", "check_pasted_fields",
 )
+for node in CHECK_NODES:
+    builder.add_edge("dispatch_checks", node)
+builder.add_edge(list(CHECK_NODES), "decide")
 builder.add_edge("decide", "explain")
 builder.add_edge("explain", END)
 graph = builder.compile()

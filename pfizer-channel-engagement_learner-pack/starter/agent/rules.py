@@ -217,6 +217,75 @@ def parse_date(value: str | date) -> date:
     )
 
 
+_MONTHS = {m: i for i, m in enumerate(
+    ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"], start=1)}
+
+
+def parse_expiry_month(value: str) -> tuple[int, int]:
+    """Return (year, month) from a full date or a month-only expiry such as "Sep 2026", "09/2026" or "Oct-26".
+
+    Pharma packs print expiry as a month; batch-master expiry is the month end, so month-level
+    comparison is the exact test.
+    """
+    text = (value or "").strip()
+    try:
+        full = parse_date(text)
+        return full.year, full.month
+    except ValueError:
+        pass
+    named = re.fullmatch(r"([A-Za-z]{3})[A-Za-z]*[\s\-/.,']*(\d{2}|\d{4})", text)
+    numeric = re.fullmatch(r"(\d{1,2})\s*[/\-.]\s*(\d{2}|\d{4})", text)
+    if named and named.group(1).casefold() in _MONTHS:
+        month, year = _MONTHS[named.group(1).casefold()], int(named.group(2))
+    elif numeric and 1 <= int(numeric.group(1)) <= 12:
+        month, year = int(numeric.group(1)), int(numeric.group(2))
+    else:
+        raise ValueError(f"Expiry is not a recognisable date or month: {value!r}")
+    return (year + 2000 if year < 100 else year), month
+
+
+def parse_amount(value: str) -> Decimal:
+    """Parse a rupee amount such as "Rs 64,400", "₹57,477.00" or "57477"."""
+    cleaned = re.sub(r"(?i)(rs\.?|inr|₹|/-)", "", str(value or "")).replace(",", "").strip()
+    try:
+        amount = Decimal(cleaned)
+    except InvalidOperation as exc:
+        raise ValueError(f"Amount is not a number: {value!r}") from exc
+    if amount < 0:
+        raise ValueError(f"Amount cannot be negative: {value!r}")
+    return amount
+
+
+def compare_pasted_fields(pasted: dict, register: dict) -> list[dict]:
+    """Compare fields read from pasted text with the register values; return one row per compared field.
+
+    `register` holds claim_no context values: stockist_code, sku_code, batch_no, qty, claim_value_inr,
+    invoice_ref, expiry. Each row is {field, pasted, register, match}; unparseable pasted values give
+    match=None so a person sees them.
+    """
+    rows = []
+    for field in ("stockist_code", "sku_code", "batch_no", "invoice_ref"):
+        if pasted.get(field) and register.get(field):
+            same = pasted[field].strip().upper() == register[field].strip().upper()
+            rows.append({"field": field, "pasted": pasted[field], "register": register[field], "match": same})
+    comparisons = (
+        ("qty", parse_pack_quantity, parse_pack_quantity),
+        ("claim_value", parse_amount, parse_amount),
+        ("expiry_claimed", parse_expiry_month, parse_expiry_month),
+    )
+    register_keys = {"qty": "qty", "claim_value": "claim_value_inr", "expiry_claimed": "expiry"}
+    for field, parse_pasted, parse_register in comparisons:
+        pasted_value, register_value = pasted.get(field), register.get(register_keys[field])
+        if not pasted_value or not register_value:
+            continue
+        try:
+            same = parse_pasted(pasted_value) == parse_register(register_value)
+        except ValueError:
+            same = None
+        rows.append({"field": field, "pasted": pasted_value, "register": register_value, "match": same})
+    return rows
+
+
 def remaining_shelf_life_percent(
     invoice_date: str | date,
     mfg_date: str | date,

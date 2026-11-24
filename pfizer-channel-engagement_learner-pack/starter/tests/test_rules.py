@@ -14,6 +14,9 @@ from config import (
 )
 from agent.rules import (
     classify_prior_claim,
+    compare_pasted_fields,
+    parse_amount,
+    parse_expiry_month,
     assess_transit_claim_window,
     assess_expiry_claim_window,
     claim_value_at_pts,
@@ -224,3 +227,33 @@ def test_near_repeat_tolerance_is_one_percent_or_one_pack_whichever_is_larger():
     assert classify_prior_claim(Decimal("500"), Decimal("495"), "Credited") == "near_repeat"
     assert classify_prior_claim(Decimal("500"), Decimal("494"), "Credited") is None
     assert classify_prior_claim(Decimal("370"), Decimal("371"), "Credited") == "near_repeat"
+
+
+def test_expiry_month_accepts_month_only_and_full_dates():
+    assert parse_expiry_month("Sep 2026") == (2026, 9)
+    assert parse_expiry_month("09/2026") == (2026, 9)
+    assert parse_expiry_month("Oct-26") == (2026, 10)
+    assert parse_expiry_month("30-09-2026") == (2026, 9)
+    with pytest.raises(ValueError):
+        parse_expiry_month("13/2026")
+    with pytest.raises(ValueError):
+        parse_expiry_month("soon")
+
+
+def test_amount_parsing_strips_currency_and_separators():
+    assert parse_amount("Rs 64,400") == Decimal("64400")
+    assert parse_amount("₹57,477.00") == Decimal("57477.00")
+    with pytest.raises(ValueError):
+        parse_amount("sixty")
+
+
+def test_pasted_fields_match_or_conflict_with_register():
+    register = {"batch_no": "G2400105", "qty": "805", "claim_value_inr": "57477.0",
+                "expiry": "30-06-2026", "invoice_ref": "INV/N01/2412/022035"}
+    same = compare_pasted_fields(
+        {"batch_no": "g2400105", "qty": "805", "claim_value": "Rs 57,477", "expiry_claimed": "Jun 2026"}, register)
+    assert all(row["match"] is True for row in same)
+    conflict = compare_pasted_fields({"claim_value": "Rs 64,400", "expiry_claimed": "Aug 2025"}, register)
+    assert [row["match"] for row in conflict] == [False, False]
+    unreadable = compare_pasted_fields({"expiry_claimed": "next month"}, register)
+    assert unreadable[0]["match"] is None

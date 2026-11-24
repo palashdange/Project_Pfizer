@@ -1,6 +1,6 @@
 # Project Sankalp: architecture note
 
-**As built · checked against `starter/agent/graph.py` on 25 November 2026 · Fictional training case**
+**As built · checked against `starter/agent/graph.py` on 24 November 2026 · Fictional training case**
 
 ## 1. User, decision, and the split
 
@@ -54,12 +54,12 @@ flowchart TD
 | Free text with no claim number | `NEEDS_PERSON` (`input_parse: missing`) | `test_unidentifiable_free_text_is_routed_to_a_person` |
 | Provider down or key missing during parse | Exception caught → `NEEDS_PERSON` | `test_provider_failure_during_parse_routes_to_a_person` |
 | Provider down during explain | Code route kept; code fallback text | `test_provider_failure_during_explain_keeps_code_route_and_uses_fallback` |
-| Model adds a number or approval wording | Fallback explanation | `test_model_explanation_cannot_add_numbers_not_present_in_checks` |
+| Model adds a number, approval wording, or says an action was taken ("has been rejected") | Fallback explanation | `test_model_explanation_cannot_add_numbers_not_present_in_checks`, `test_explanation_cannot_present_the_route_as_an_action_already_taken` |
 | Value ≠ quantity × PTS | `value: fail` → `NEEDS_PERSON` | `test_claim_value_mismatch_is_sent_to_a_person` |
 | Provider hangs | **Gap:** no explicit model or request timeout is configured; the Vercel function limit is the only cap | None yet |
 | Batch, sales or invoice row missing; bad date or quantity | Check returns `missing` → `NEEDS_PERSON`, never a guess | check set `missing_batch_01`, `blank_invoice_01/02`; date and quantity tests in `test_rules.py` |
 
-`pytest -q`: **89 passed**; the frontend Node tests pass **16/16** (`test_frontend.js` and `test_evidence.js`). The tests cover every boundary in `rules.py` (day 90, day 7, the 60% shelf-life threshold, the 3% cap, PTS value). `agent/tools.py` holds the earlier tool-loop functions. They are still unit-tested but **not wired into the graph**.
+`pytest -q`: **90 passed**; the frontend Node tests pass **17/17** (`test_frontend.js` and `test_evidence.js`). The tests cover every boundary in `rules.py` (day 90, day 7, the 60% shelf-life threshold, the 3% cap, PTS value). `agent/tools.py` (earlier tool loop) is unit-tested but **not wired into the graph**.
 
 ## 5. Accuracy
 
@@ -68,9 +68,9 @@ flowchart TD
 | Starter tool loop (commit `a22bdcc`) | 6/16 | — |
 | Claims graph (current) | **16/16** | **3/6** |
 
-Run `python checks/run_checks.py`; it scores held-out (`holdout_`) cases separately. The 16/16 also holds on the live URL. **Held-out failures (known gaps):** (a) a pasted message that names a claim *and* states a different expiry or value is credited from the register; the pasted fields aren't compared against it. (b) A repeat of an earlier **pending** claim (CLM-2608-02222 → CLM-2609-04449, same stockist, batch and 547 packs) is missed, because `check_duplicate` only looks at credited claims. Passed: the day-90 boundary, a label that contradicts the dates, and a pasted email with no claim ID.
+Run `python checks/run_checks.py`; it scores held-out (`holdout_`) cases separately. The live URL gives the same scores. **Held-out failures (known gaps):** (a) a pasted message that names a claim *and* states a different expiry or value is credited from the register; the pasted fields aren't compared against it. (b) A repeat of an earlier **pending** claim (CLM-2608-02222 → CLM-2609-04449, same stockist, batch and 547 packs) is missed, because `check_duplicate` only looks at credited claims. Passed: the day-90 boundary, a label that contradicts the dates, and a pasted email with no claim ID.
 
-## 6. Speed and cost (measured 25 Nov 2026, `openai/gpt-4o-mini` via OpenRouter)
+## 6. Speed and cost (measured 24 Nov 2026, `openai/gpt-4o-mini` via OpenRouter)
 
 | Input | Route | Model calls | Tokens in / out | Seconds | Cost (USD) |
 |---|---|---:|---:|---:|---:|
@@ -80,8 +80,8 @@ Run `python checks/run_checks.py`; it scores held-out (`holdout_`) cases separat
 | CLM-2404-04181 (no invoice) | NEEDS_PERSON | 1 | 764 / 67 | 1.9 | 0.000155 |
 | Free text, no claim ID | NEEDS_PERSON | 2 | 520 / 96 | 3.5 | 0.000136 |
 
-The figures are the mean of 2 runs each, measured with LangChain's usage callback and priced at OpenRouter's list rates ($0.15 per M input tokens, $0.60 per M output). **About 4,000 claims a year** (interview notes, p. 2) × ~$0.00016 ≈ **$0.65 a year** in model cost. Hosting costs are excluded. Across the 16-case run, claim reviews took 1.4–3.6 s each, and NOT_FOUND took 0.005 s. Three live `/api/ask` calls took 1.9–3.7 s.
+The figures are the mean of 2 runs each, measured with LangChain's usage callback and priced at OpenRouter's list rates ($0.15 per M input tokens, $0.60 per M output). **About 4,000 claims a year** (interview notes, p. 2) × ~$0.00016 ≈ **$0.65 a year** in model cost. Hosting costs are excluded. Claim reviews take 1.4–3.6 s locally and 2–2.7 s on the live URL; NOT_FOUND takes 0.005 s.
 
 ## 7. Deployment
 
-The app runs on Vercel Hobby at [project-pfizer.vercel.app](https://project-pfizer.vercel.app) (health: `/api/health`). The root directory is `pfizer-channel-engagement_learner-pack/starter`. FastAPI serves `/api/*` and `public/` is served as static files. The env vars are `OPENROUTER_API_KEY` and `MODEL`. **Region:** on 25 Nov the live function ran in `iad1` (US East), per the `x-vercel-id` header. `vercel.json` now pins `"regions": ["bom1"]` (Mumbai), which takes effect on the next deploy from `master`. Pushes to `master` deploy automatically.
+Vercel Hobby at [project-pfizer.vercel.app](https://project-pfizer.vercel.app) (`/api/health`), root `pfizer-channel-engagement_learner-pack/starter`, env vars `OPENROUTER_API_KEY` and `MODEL`. FastAPI serves `/api/*`; `public/` is static. **Region `bom1`** (Mumbai), pinned in `vercel.json` and confirmed by the live `x-vercel-id` header (it was `iad1`, US East, before 24 Nov). The repo is private; the owner merges PRs to `master`, which deploys.

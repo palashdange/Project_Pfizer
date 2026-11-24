@@ -1,17 +1,24 @@
 # Project Sankalp progress log
 
-**Last updated:** 25 November 2026  
+**Last updated:** 24 November 2026  
 **Project:** Fictional Pfizer domestic-channel training case  
 **Purpose:** Keep a dated, evidence-based record of what has been completed, what is in progress, and what remains. This is a project work log, not a claim of real Pfizer validation or realized savings.
 
 ## Current status
 
-- **Deployed:** https://project-pfizer.vercel.app (Vercel Hobby, auto-deploys from `master`). `vercel.json` pins region `bom1`; the live function ran in `iad1` until that commit deploys.
+- **Deployed:** https://project-pfizer.vercel.app (Vercel Hobby, auto-deploys from `master`). Region `bom1` confirmed live. The repo is private and still deploys (owner merges via PR, merge commit).
 - **First user: Commercial Finance claims executive** (owner Neha Bansal). The graph routes each claim to recommend credit, reject, needs a person, or not found. Code decides; the model only parses free text and explains.
 - **Accuracy:** check set **16/16** (baseline 6/16); held-out set **3/6**, reported separately. `pytest -q`: **89 passed**.
 - **Second user** (Kavita Rao, Supply Chain) is optional and not yet built in the new graph.
 
-## Update — 2026-11-25
+## Update — 2026-11-24 (late)
+
+- **Changed:** added `research_note.md` (channel vocabulary; D&C Act 1940 §18 and §33(2)(h), Drugs Rules 1945 Rule 65, CGST Act §34, and DPCO 2013 paras 14/16/20, all read at source with version dates; why the problems happen). Added `calculate_gst_credit_note_timing` to `sizing.py` with a test. The UI now names the decision owner, and the `config.py` page references are verified.
+- **Result:** 1,120 of 2,391 credited claims with a matched invoice (58% of value, ₹1.13 cr a year) had credit notes dated after the CGST §34(2) window, so the GST on them may not be reversible (not sized).
+- **Evidence/checks:** `python discovery/sizing.py` (214 rows; the earlier 213 are unchanged); `pytest discovery/test_sizing.py`: 9 passed.
+- **Open items:** CGST §34(2) as amended in 2022, CDSCO GDP and the NPPA March 2026 WPI notification could not be read from this environment (see research note §5).
+
+## Update — 2026-11-24 (evening)
 
 - **Changed:** rewrote `architecture_note.md` from the current `graph.py`; added 6 `holdout_` cases to `checks/check_set.csv`, with `run_checks.py` scoring them separately; added two provider-failure tests; filled in `starter/AGENTS.md`; fixed the README health link; pinned Vercel region `bom1`; removed `.DS_Store` and added a root `.gitignore`.
 - **Result:** held-out 3/6. The failures are known gaps: pasted claim fields (expiry, value) are not compared against the register, and `check_duplicate` ignores earlier *pending* claims (CLM-2608-02222 → CLM-2609-04449).

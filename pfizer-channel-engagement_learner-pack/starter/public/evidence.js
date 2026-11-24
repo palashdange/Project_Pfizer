@@ -457,7 +457,18 @@
     return { label: "SOURCE EVIDENCE", tone: "informational" };
   }
 
-  const api = { answerSummary, attachStockFilters, escapeHtml, labelFor, renderEvidence, resultBadge, stockRowMatches };
+  // The pilot recommends; a named person in Commercial Finance decides and posts any credit.
+  const DECISION_OWNER = "Commercial Finance claims team · owner Neha Bansal (Controller)";
+
+  function decisionOwner(route) {
+    if (route === "RECOMMEND_CREDIT") return `Recommendation only. Decides and raises the credit note: ${DECISION_OWNER}.`;
+    if (route === "REJECT") return `Recommendation only, under the clause shown below. Decides: ${DECISION_OWNER}.`;
+    if (route === "NEEDS_PERSON") return `A person must review this before any credit. Decides: ${DECISION_OWNER}.`;
+    if (route === "NOT_FOUND") return "No claim with this number exists in the claims register; nothing to decide.";
+    return "";
+  }
+
+  const api = { answerSummary, attachStockFilters, decisionOwner, escapeHtml, labelFor, renderEvidence, resultBadge, stockRowMatches };
   root.EvidenceFormatter = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 }(typeof window !== "undefined" ? window : globalThis));

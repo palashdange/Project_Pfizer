@@ -1,50 +1,76 @@
-# Pfizer domestic channel: ranked sizing and pilot recommendation
+# Pfizer domestic channel: discovery and pilot recommendation
 
-**Working note · 23 November 2026 · Fictional training case**
+**Working note · 24 November 2026 · Fictional training case**
 
 ## 1. Context
 
-The case describes a domestic pharmaceutical channel with rising expiry claims, uneven availability, quarter-end dispatch concentration, and a request from CFO Rohan Mehta for a demand forecast. The supplied extracts support several operational and control signals, but they do not establish a single root cause or confirmed annual loss. The rupee estimates below are reproducible screening values from the case data, not savings commitments. In particular, an order gap valued at PTS is not automatically lost sales: the pack has no order status, stockist sell-through, contribution margin, or proof that unfilled units were not supplied later. The case data is fictional and should not be represented as actual Pfizer performance.
+The case asks why the domestic channel is losing value at both ends and whether forecasting helps; the data signals rising expiry claims, quarter-end scheme loading, uneven CFA fill/allocation, and claim-control exposure.
 
-## 2. Ranked evidence and annualized screening values
+**Caveat:** Fictional invoice/claim extracts (Apr 2024–Sep 2026) show historical screens, not proven savings; non-invoiced orders, cancellations, sell-through, stock on hand, margin, and causal links are unavailable.
 
-Amounts are annualized from observed data by dividing by the number of months represented and multiplying by 12. They rank the size of the measured signal, not confidence that the amount can be recovered. Claims categories use mutually exclusive priority: duplicate, policy-window failure, over-quantity, then missing invoice reference. The shelf-life claim cross-check overlaps other categories and is not added. See [`sizing_results.csv`](sizing_results.csv) for quarter-level results, calculation methods, sample source rows, and policy references.
+## 2. Ranked recovery indicators
 
-| Rank | Problem / annual value | Method and evidence | Owner to involve |
+Rank 1 is the largest modeled expiry-target gap; it is not proven recoverable and overlaps claim-control screens.
+
+| Rank | Indicator / value | Method and evidence | Owners |
 |---:|---|---|---|
-| 1 | Uncovered-order pack value after free goods — **₹15.33 cr/year** | Positive `(ordered_qty − invoiced_qty − free_qty) × PTS`, after grouping split-batch invoice lines so order quantity is counted once and shipped/free packs are summed. `primary_sales.csv`; source rows by CFA are in `sizing_results.csv`. It is still only a screening proxy, not confirmed lost sales. | Kavita Rao; Vaishali Kapoor |
-| 2 | Free goods above the 3% quarterly cap — **₹1.58 cr/year** | Sum of positive quarterly excess: free quantity × PTS less 3% of net invoiced value. Q1 FY27 computes to 3.69%, matching the QBR; QBR says the exception was CFO-approved. Sample rows are in `sizing_results.csv`. CO-POL-014 §4.4. | Arjun Sethi; Rohan Mehta |
-| 3 | Credited claims without invoice reference — **₹43.08 lakh/year at risk** | Credited claims with blank reference remaining after higher-priority checks; value is the recorded credit amount. Blank reference is not proof of invalidity: CO-POL-014 §5.4 permits an alternate ledger and written approval route. Examples and rows are in `sizing_results.csv`. | Neha Bansal; Rohan Mehta |
-| 4 | Credited claims outside policy window — **₹15.74 lakh/year screen** | Credited claim value outside type-specific §5.2 timing, using batch-master expiry for expiry claims and original invoice date for breakage/short supply. This is a rule-screened amount pending source-document review. Examples and linked rows are in `sizing_results.csv`. | Neha Bansal |
-| 5 | Potential duplicate credits — **₹4.45 lakh/year candidate screen** | Later credited claim with same stockist, batch, and claimed quantity. There are candidates, not a confirmed full population of duplicates. One hand-checkable pair is CLM-2603-01616 / CLM-2605-04488, `expiry_claims.csv` rows 3269 and 3596; both record ₹26,846.40. CO-POL-014 §5.6. | Neha Bansal; Rohan Mehta |
-| 6 | Expiry claims on stockist/batches with a below-60% RSL invoice — **₹96.37 lakh/year cross-check** | Claims on a stockist/batch for which at least one sales line had RSL below 60% on invoice date. It is a cross-cutting association, not evidence that the dispatch caused or qualifies the claim; do not add it to the ranked exposure total. CO-POL-014 §7.1. | Kavita Rao; Neha Bansal |
-| 7 | Over-quantity claims — **₹6,642/year screen** | Excess claimed packs over summed invoiced plus free packs for stockist/batch, valued at PTS. Rule screen only; examples and source rows are in `sizing_results.csv`. CO-POL-014 §5.5. | Neha Bansal |
-| — | Claim processing time — **42-day median; 3,115 of 4,112 over 30 days** | Claim-date to credit-note-date on rows with both dates; claim date is the available field, not a receipt timestamp. Q1 FY27 median is 43 days (406/548 over 30), versus QBR 46 days. No rupee value assigned. CO-POL-014 §5.6. | Neha Bansal; Rohan Mehta |
+| 1 | **Expiry-claim gap:** 30-month run-rate **₹1.46 cr/year**; FY27 H1 observed **₹1.99 cr**, current run-rate **₹1.99 cr × 2 = ₹3.97 cr/year** | FY-specific excess over 1% of primary net value; sum positive gaps ÷ 30 months × 12. H1 = Apr–Sep 2026; claims are grouped by claim FY, not matched cohorts. [Sizing](sizing_results.csv); CFO target ([interviews, p. 1](../data-pack/04_stakeholder_interview_notes.pdf)). | Rohan Mehta, Arjun Sethi, Kavita Rao |
+| 2 | **No-invoice-reference credited claims: ₹43.08 lakh/year at risk** | Residual credited value after higher-priority screens; blank reference is not proof of invalidity. CO-POL-014 §5.4 allows ledger verification and written Area Manager approval. [Sizing](sizing_results.csv). | Neha Bansal |
+| 3 | **Outside-window credited claims: ₹15.74 lakh/year** | Type-specific CO-POL-014 §5.2 windows. [Sizing](sizing_results.csv). | Neha Bansal |
+| 4 | **Potential duplicate credits: ₹4.45 lakh/year** | Later credit matching stockist + batch + quantity; candidates need payment/ledger review. Includes hand-checked CLM-2603-01616 / CLM-2605-04488. §5.6. [Sizing](sizing_results.csv). | Neha Bansal, Rohan Mehta |
+| 5 | **Over-quantity screen: ₹6,642/year** | Excess claimed packs above invoiced + free packs, valued at PTS; higher-priority categories excluded. §5.5. [Sizing](sizing_results.csv). | Neha Bansal |
 
-The claims figures above are annualized historical run rates, not a forecast of future leakage. The duplicate screen includes false positives until claim context is reviewed. The missing-reference amount is value at risk, not proven loss. The below-60% RSL cross-check is non-additive. The separate invoice-only gap before free goods is ₹22.32 crore/year; it is retained as a non-additive diagnostic because free packs may fulfill part of the ordered quantity. Exact deduplication, raw and clean row counts, date ranges, overlap counts, and QBR comparisons are printed by the sizing script.
+**Other scale indicators:** The after-free-packs order gap is **₹15.33 cr/year** (availability upper bound, not lost sales). FOC above the quarterly cap screens at **₹1.58 cr/year**; QBR says the CFO approved each exception ([QBR, p. 2](../data-pack/06_qbr_finance_and_mis_pack.pdf)). The <60% RSL claim cross-check (₹96.37 lakh/year) overlaps the claims screens.
 
-## 3. CFO forecast ask: what could a forecast address?
+## 3. Forecast verdict
 
-The sizing script attributes **87.4% of the additive annualized screening total** to the after-free-packs order-gap proxy, the only item a forecast could plausibly influence, and labels that relationship “partly.” This is a share of screened rupee indicators, **not** 87.4% of recoverable loss or forecast-driven savings. The pack cannot establish a validated financial amount a forecast would recover. A forecast can inform planning and allocation, but cannot enforce scheme caps, verify claim windows, stop duplicate credits, validate invoice references, or gate short-RSL dispatches. Those require deterministic workflow controls and accountable review.
+**A new forecast tool has no demonstrated direct recovery here; the intervention areas are scheme loading, CFA allocation, and claim controls.** Vaishali says the forecast is national and the allocation sheet splits it, so the ₹15.33 cr gap is not itself forecast error ([interviews, p. 3](../data-pack/04_stakeholder_interview_notes.pdf)). **0% of quantified recoverable rupees is demonstrated as forecast-addressable**; the expiry gap is a monitor, not a forecast benefit estimate.
 
-The primary-sales history can support a shipment baseline, but does not measure downstream demand. The case has 30 months of primary sales and no stockist sell-through or on-hand inventory. Therefore the pilot should show a transparent shipment baseline only as supporting context and must not call it a downstream-demand forecast or promise financial recovery. Before sizing forecast benefit, reconcile order status and cancellations, define the target, link allocation decisions to subsequent fill and sell-through, and agree contribution margin with Finance.
+## 4. Pilot user and plan for the money
 
-## 4. Recommended problem and user
+**Primary user:** Commercial Finance claims executive; owner Neha Bansal (Controller). Weekly, review each claim and recommend credit, reject, or person review; Finance keeps decision authority. Her two-person team handles about 4,000 lines/year and cannot check every claim against billing history ([interviews, p. 2](../data-pack/04_stakeholder_interview_notes.pdf)).
 
-Freeze the pilot around the weekly Supply Chain decision: **which CFA–SKU availability gaps or aging-batch signals need investigation before the next planning cycle?** The primary user is **Head of Supply Chain Kavita Rao**, with **Lead Demand Planning Vaishali Kapoor** as the planning partner. These roles and names are from `04_stakeholder_interview_notes.pdf`; they are case stakeholders, not real client validation. This choice follows the largest actionable signal (unfilled-order value) while avoiding the unsupported claim that forecasting alone solves it. The tool should show stock and shipment evidence, data cut, rule calculation, and source rows; the owner decides what to investigate through existing processes.
+**Secondary user:** Kavita Rao (Head of Supply Chain), reviewing expiry-risk batches and short CFAs ([interviews, p. 2](../data-pack/04_stakeholder_interview_notes.pdf)).
 
-The pilot remains read-only and retrospective on the supplied extracts until refreshed dated data, order status, clear stock grain, and reviewer dispositions exist. Claims controls are a separate high-value opportunity, but combining Finance adjudication and Supply Chain planning into one first workflow would dilute the user, decision, and acceptance criteria. The weekly workflow and proposed architecture should use this scope; archived plans are retained as history, not current commitments.
+**Plan for the money:** Pre-credit controls could flag **₹20.25 lakh/year** in outside-window (₹15.74L), duplicate (₹4.45L), and over-quantity (₹0.066L) candidates—not proven savings. **₹43.08 lakh/year** of credited claims without references would route to ledger/approval review, not automatic rejection. Address future expiry risk through scheme stock norms (§4.5: max 2.5 months’ average secondary stock; SSS not received), allocation review, and an expiry-risk view; their financial impact is unquantified.
 
-## 5. Open questions for the case client
+## 5. Why it may be happening: observed signals
 
-1. Which order-line field distinguishes accepted demand, cancellation, backorder, and partial fulfillment? Can repeat unfilled orders be linked to one demand event?
-2. What is the official fill-rate numerator and denominator? The extract gives 88.02% invoiced-only and 90.85% including free packs, while the QBR gives 90.9%. Should free packs count as fulfillment for the official KPI and financial sizing?
-3. Can the conflicting CFA/SKU/batch snapshot keys be reconciled, and what is the correct stock grain and timestamp?
-4. What downstream sell-through and stock-on-hand data can be provided by stockist/SKU/week? Without these, how should the CFO’s request for a demand forecast be scoped?
-5. What is the Finance-approved definition and cutoff for expiry claims as a percentage of primary sales, and can the ₹1.415 crore QBR numerator be reconciled to the claims ledger?
-6. Which human roles own alert disposition, escalation, and recording outcomes? What response time and baseline effort should the pilot measure?
-7. Can Finance verify claim receipt dates, approvals for missing-invoice claims, duplicate-credit matches, and the amounts actually recovered?
+Quarter-end share is invoiced + free packs in the final 10 days ÷ quarter packs; FOC is free quantity × PTS ÷ primary net value. Source: exact-deduplicated [primary sales](../data-pack/data/primary_sales.csv), calculated in [sizing.py](sizing.py). v4.1 extended quarter-end schemes to Tier B SKUs on 15 Nov 2024; FY25 Q3 includes pre- and post-change days (policy revision history, p. 1).
 
-## Reproducibility
+| FY quarter | Last-10-day pack share | FOC / primary net value |
+|---|---:|---:|
+| FY25 Q1 | 20.38% | 1.18% |
+| FY25 Q2 | 21.17% | 1.25% |
+| FY25 Q3 | **35.35%** | **4.95%** |
+| FY25 Q4 | 34.63% | 4.69% |
+| FY26 Q1 | 34.69% | 4.68% |
+| FY26 Q2 | 31.89% | 3.75% |
+| FY26 Q3 | 30.60% | 3.47% |
+| FY26 Q4 | 29.14% | 3.19% |
+| FY27 Q1 | 30.64% | 3.69% |
+| FY27 Q2* | 27.84% | 2.82% |
 
-Run `python discovery/sizing.py` from the learner-pack root in an environment with pandas installed. The script writes [`sizing_results.csv`](sizing_results.csv). Its unit tests are in [`test_sizing.py`](test_sizing.py). For evidence interpretation, see [`voice_note_evidence_log.md`](voice_note_evidence_log.md) and [`business_problem_validation.md`](business_problem_validation.md). Earlier overlapping planning drafts are preserved under [`archive/`](archive/).
+**For Rohan’s “show me if schemes hurt us”:** FY25 Q2→Q3 late-quarter packs rose 21.17%→35.35% and FOC 1.25%→4.95%; FOC stayed above 3% in later full quarters, while the QBR says exceptions were CFO-approved—evidence of scheme-loading risk, not causation (QBR, pp. 1–2). Ludhiana voice notes also report Monte-LC excess after a 10+2 offer alongside Amox-Clav shortages, qualitative only ([voice-note log](voice_note_evidence_log.md#aud-20261001-wa0004--scheme-stock-and-shortage-in-ludhiana)).
+
+CFA share is share of FY ordered packs. First group split-batch rows by invoice/date/CFA/stockist/SKU. [sizing.py](sizing.py) reports uncapped fill: `sum(invoiced + free) / sum(ordered)`; the comparison caps each grouped order at 100%: `sum(min(invoiced + free, ordered)) / sum(ordered)`. FY25 is **100.00% under both methods**: all 33,916 recorded groups match ordered quantity. The billed extract omits orders with no invoice.
+
+| CFA | FY25 share; capped / uncapped fill | FY26 share / fill | FY27 H1 share / fill |
+|---|---:|---:|---:|
+| CF-E01 | 17.85%; 100.00% / 100.00% | 16.71% / 94.90% | 13.25% / 94.66% |
+| CF-N01 | 16.86%; 100.00% / 100.00% | 17.23% / 91.75% | 18.24% / 86.56% |
+| CF-N02 | 15.33%; 100.00% / 100.00% | 16.80% / 92.73% | **20.85% / 80.60%** |
+| CF-S01 | 18.59%; 100.00% / 100.00% | 18.31% / 95.89% | 17.67% / 87.63% |
+| CF-S02 | 15.72%; 100.00% / 100.00% | 15.46% / 94.49% | 15.00% / 88.69% |
+| CF-W01 | 15.65%; 100.00% / 100.00% | 15.50% / 93.39% | 14.99% / 91.96% |
+
+Uncapped fill including free packs matches QBR FY26 Q1–Q4 and FY27 Q1 to rounding: 99.52%, 94.58%, 91.52%, 90.25%, 90.85% vs 99.5%, 94.6%, 91.5%, 90.3%, 90.9%. Capping yields 100% and fails to reconcile; QBR does not state its formula (p. 1). Kavita says FY26 shares may have rolled forward after a missed review; Vaishali confirms forecast/allocation are separate ([interviews, pp. 1, 3](../data-pack/04_stakeholder_interview_notes.pdf)). A planning voice note also flags the FY26 review gap ([voice-note log](voice_note_evidence_log.md#aud-20261013-wa0003--planning-allocation-and-forecast-discussion)); these support review, not causation.
+
+## 6. Open questions
+
+1. What is the CFO’s 1% numerator/denominator, and how should FY27 Q1 claims reconcile: QBR ₹1.415 cr / 2.75% vs extract ₹1.354 cr / 2.64%?
+2. Can Finance link claims to invoices, credit notes, payments, recoveries, and reversals to establish avoidable leakage?
+3. Can Planning provide allocation versions/approvals and the demand evidence used for CFA shares?
+4. Can the case provide non-invoiced orders, order status, sell-through, stock on hand, and final human-review ownership?
+
+**Reproduce:** from the learner-pack root run `python discovery/sizing.py` and `pytest discovery/test_sizing.py`; script writes [sizing_results.csv](sizing_results.csv) and prints driver tables. `*` = FY27 H1 through 30 Sep 2026.

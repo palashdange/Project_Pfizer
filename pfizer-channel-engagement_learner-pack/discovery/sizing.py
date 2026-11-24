@@ -41,6 +41,8 @@ RESULT_COLUMNS = [
     "forecast_fixes",
 ]
 
+EXPIRY_CLAIM_TYPES = {"NEAR EXPIRY", "EXPIRED"}
+
 
 def normalize_code(value: Any, *, cfa: bool = False) -> str:
     """Normalize identifier whitespace/case; CFA identifiers also lose hyphens."""
@@ -175,6 +177,73 @@ def _period_rows(
     })
 
 
+def _fiscal_year_label(dates: pd.Series) -> pd.Series:
+    """Return fiscal-year labels for April-March years."""
+    month = dates.dt.month
+    year = dates.dt.year + (month >= 4).astype("Int64")
+    return "FY" + (year % 100).astype("string").str.zfill(2)
+
+
+def calculate_driver_tables(
+    sales: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Summarize quarter-end concentration and CFA share/fill-rate drivers.
+
+    Invoice date is the available transaction-date field. This does not prove
+    physical dispatch timing or that all recorded orders remained valid demand.
+    """
+    dated_sales = sales.loc[sales["invoice_date"].notna()].copy()
+    dated_sales["_quarter"] = fiscal_quarter(dated_sales["invoice_date"])
+    dated_sales["_quarter_end"] = dated_sales["invoice_date"] + pd.offsets.QuarterEnd(0)
+    dated_sales["_in_last_10_days"] = (
+        dated_sales["invoice_date"] >= dated_sales["_quarter_end"] - pd.Timedelta(days=9)
+    )
+    dated_sales["_primary_packs"] = dated_sales["invoiced_qty"] + dated_sales["free_qty"]
+    dated_sales["_free_value"] = dated_sales["free_qty"] * dated_sales["pts_inr"]
+
+    quarter_rows = []
+    for quarter, group in dated_sales.groupby("_quarter", sort=True):
+        total_packs = float(group["_primary_packs"].sum())
+        late_packs = float(group.loc[group["_in_last_10_days"], "_primary_packs"].sum())
+        net_sales = float(group["net_value_inr"].sum())
+        free_value = float(group["_free_value"].sum())
+        quarter_rows.append({
+            "period": str(quarter),
+            "primary_packs": int(total_packs),
+            "last_10_day_packs": int(late_packs),
+            "last_10_day_share_pct": round(100 * late_packs / total_packs, 2) if total_packs else 0.0,
+            "free_goods_value_inr": round(free_value, 2),
+            "primary_net_value_inr": round(net_sales, 2),
+            "foc_pct_of_primary_net_value": round(100 * free_value / net_sales, 2) if net_sales else 0.0,
+        })
+    quarter_end = pd.DataFrame(quarter_rows)
+
+    # Use the same order grain as the existing fill-rate reconciliation.
+    order_key = ["invoice_no", "invoice_date", "cnf_code", "stockist_code", "sku_code"]
+    orders = dated_sales.groupby(order_key, dropna=False).agg(
+        ordered_qty=("ordered_qty", "max"),
+        invoiced_qty=("invoiced_qty", "sum"),
+        free_qty=("free_qty", "sum"),
+    ).reset_index()
+    orders["fiscal_year"] = _fiscal_year_label(orders["invoice_date"])
+    cfa_rows = []
+    for fiscal_year, fy_orders in orders.groupby("fiscal_year", sort=True):
+        fy_ordered_total = float(fy_orders["ordered_qty"].sum())
+        for cfa, group in fy_orders.groupby("cnf_code", sort=True):
+            ordered = float(group["ordered_qty"].sum())
+            invoiced = float(group["invoiced_qty"].sum())
+            free = float(group["free_qty"].sum())
+            cfa_rows.append({
+                "fiscal_year": str(fiscal_year),
+                "cfa_code": str(cfa),
+                "ordered_qty": int(ordered),
+                "share_of_fy_ordered_qty_pct": round(100 * ordered / fy_ordered_total, 2) if fy_ordered_total else 0.0,
+                "fill_rate_invoiced_only_pct": round(100 * invoiced / ordered, 2) if ordered else 0.0,
+                "fill_rate_including_free_pct": round(100 * (invoiced + free) / ordered, 2) if ordered else 0.0,
+            })
+    return quarter_end, pd.DataFrame(cfa_rows)
+
+
 def _quarterly_sum(
     frame: pd.DataFrame,
     date_column: str,
@@ -228,6 +297,57 @@ def calculate_sizing(frames: dict[str, pd.DataFrame]) -> tuple[pd.DataFrame, dic
     sales_months = _months(sales, "invoice_date")
     claim_months = _months(claims, "claim_date")
     result_rows: list[dict[str, Any]] = []
+
+    # The CFO's interview states a goal of bringing expiry returns back toward
+    # 1% of sales. This is a target-gap screen, not a proven recoverable loss.
+    expiry_claims = claims[
+        claims["claim_type"].str.strip().str.upper().isin(EXPIRY_CLAIM_TYPES)
+    ].copy()
+    expiry_claims["_fiscal_year"] = _fiscal_year_label(expiry_claims["claim_date"])
+    sales["_fiscal_year"] = _fiscal_year_label(sales["invoice_date"])
+    fy_sales = sales.groupby("_fiscal_year")["net_value_inr"].sum()
+    expiry_target_rows = []
+    expiry_target_total = 0.0
+    fy_keys = sorted(set(expiry_claims["_fiscal_year"].dropna().astype(str)) | set(fy_sales.index.astype(str)))
+    for fy in fy_keys:
+        claim_group = expiry_claims[expiry_claims["_fiscal_year"].astype("string").eq(fy)]
+        claim_value = float(claim_group["claim_value_inr"].sum())
+        primary_net = float(fy_sales.get(fy, 0.0))
+        gap = max(0.0, claim_value - 0.01 * primary_net)
+        expiry_target_total += gap
+        examples = _examples(claim_group.sort_values("claim_value_inr", ascending=False), "expiry_claims.csv", extra="claim_no")
+        sales_fy_rows = sales[sales["_fiscal_year"].astype("string").eq(fy)]
+        if not sales_fy_rows.empty:
+            sales_examples = _examples(sales_fy_rows.sort_values("net_value_inr", ascending=False), "primary_sales.csv")
+            examples = "; ".join(part for part in [examples, sales_examples] if part)
+        expiry_target_rows.append({
+            "problem": "Expiry claims above 1% target (screen; not proven recoverable)",
+            "inr_value": round(gap, 2),
+            "period": fy,
+            "method": (
+                f"max(0, expiry claim_value_inr ₹{claim_value:,.2f} − 1% × primary net value ₹{primary_net:,.2f}); "
+                "claims grouped by claim-date FY and compared with same-FY sales; not a matched shipment cohort"
+            ),
+            "source_rows_example": examples,
+            "policy_clause": "CFO target stated in Doc 04 interview; not a CO-POL-014 threshold",
+            "forecast_fixes": "partly, in principle — planning may influence future expiry, but no causal or recoverability amount is established.",
+        })
+    result_rows.extend(expiry_target_rows)
+    # Use the complete claims-data coverage, including months with zero expiry
+    # claims, so the run-rate does not inflate by dropping zero months.
+    results_expiry_months = claim_months
+    result_rows.append({
+        "problem": "Expiry claims above 1% target (screen; not proven recoverable)",
+        "inr_value": round(expiry_target_total * 12 / results_expiry_months, 2) if results_expiry_months else 0.0,
+        "period": f"Annualized run-rate ({results_expiry_months} observed months)",
+        "method": (
+            f"Sum FY-specific positive gaps ₹{expiry_target_total:,.2f} ÷ {results_expiry_months} claim months × 12; "
+            "claims are grouped by claim-date FY and compared with same-FY primary net value"
+        ),
+        "source_rows_example": "; ".join(row["source_rows_example"] for row in expiry_target_rows if row["source_rows_example"]),
+        "policy_clause": "CFO target stated in Doc 04 interview; not a CO-POL-014 threshold",
+        "forecast_fixes": "partly, in principle — planning may influence future expiry, but no causal or recoverability amount is established.",
+    })
 
     # 1. FOC above quarterly policy cap, using source-line PTS and net sales.
     sales["_free_value"] = sales["free_qty"] * sales["pts_inr"]
@@ -510,7 +630,7 @@ def calculate_sizing(frames: dict[str, pd.DataFrame]) -> tuple[pd.DataFrame, dic
                 grouped.setdefault(period, (0.0, ""))
             _period_rows(result_rows, problem=problem, grouped=grouped,
                      total_months=int(cfa_months.get(cfa, 0)), policy="— (order gap signal; not a policy breach)",
-                     forecast="partly — a better plan may improve availability, but order status, demand, and contribution margin are unverified.",
+                     forecast="no as a stand-alone forecast — the national forecast is split by a separate allocation decision; order status and demand remain unverified.",
                      method_note=f"{method}; aggregate grain is invoice + stockist + SKU + CFA + date")
 
     # 8. Process performance, not rupees. Include all valid claims by quarter.
@@ -562,22 +682,14 @@ def calculate_sizing(frames: dict[str, pd.DataFrame]) -> tuple[pd.DataFrame, dic
     }
 
     results = pd.DataFrame(result_rows, columns=RESULT_COLUMNS)
-    # The forecast share uses disjoint rupee buckets only. Item 6 is an overlap
-    # diagnostic and item 8 has no rupee value, so neither enters this ratio.
-    financial = results[
-        results["period"].astype("string").str.startswith("Annualized")
-        & ~results["problem"].str.startswith("Expiry claims on stockist-batches")
-        & ~results["problem"].str.startswith("Claims processing time")
-        & ~results["problem"].str.startswith("Invoiced-only gap before free goods")
-    ].copy()
-    financial["inr_value"] = pd.to_numeric(financial["inr_value"], errors="coerce").fillna(0)
-    denominator = float(financial["inr_value"].sum())
-    addressable = float(financial.loc[financial["problem"].str.startswith("Unfilled-order pack value after free goods"), "inr_value"].sum())
+    annual_rows = results[results["period"].astype("string").str.startswith("Annualized")]
+    availability_problem_size = float(annual_rows.loc[
+        annual_rows["problem"].str.startswith("Unfilled-order pack value after free goods"), "inr_value"
+    ].sum())
     invoice_only_gap = float(results.loc[
         results["period"].astype("string").str.startswith("Annualized")
         & results["problem"].str.startswith("Invoiced-only gap before free goods"), "inr_value"
     ].sum())
-    forecast_share = addressable / denominator if denominator else 0.0
     q1_sales = sales[sales["_quarter"].eq("FY27 Q1")]
     q1_free_pct = float(q1_sales["_free_value"].sum() / q1_sales["net_value_inr"].sum() * 100) if q1_sales["net_value_inr"].sum() else 0.0
     q1_orders = sales_order[sales_order["_quarter"].eq("FY27 Q1")].groupby(order_key, dropna=False).agg(
@@ -588,16 +700,23 @@ def calculate_sizing(frames: dict[str, pd.DataFrame]) -> tuple[pd.DataFrame, dic
         (q1_orders["invoiced_qty"].sum() + q1_sales.loc[q1_sales["_quarter"].eq("FY27 Q1"), "free_qty"].sum())
         / q1_orders["ordered_qty"].sum() * 100
     ) if q1_orders["ordered_qty"].sum() else 0.0
+    quarter_end_concentration, cfa_mix = calculate_driver_tables(sales)
+    # Exclude the order-gap proxy as requested. Available evidence does not
+    # validate any rupee amount as directly recoverable through forecasting.
     summary = {
         "sales_observed_months": sales_months,
         "claims_observed_months": claim_months,
-        "forecast_addressable_annualized_inr": addressable,
+        "availability_problem_size_annualized_inr": availability_problem_size,
         "invoice_only_gap_annualized_diagnostic_inr": invoice_only_gap,
-        "forecast_share_of_additive_annualized_exposure": forecast_share,
-        "forecast_share_denominator_inr": denominator,
         "fy27_q1_free_goods_pct": q1_free_pct,
         "fy27_q1_fill_rate_by_sizing_method_pct": q1_fill_rate,
         "fy27_q1_fill_rate_including_free_pct": q1_fill_rate_with_free,
+        "expiry_claims_above_1pct_target_annualized_inr": round(expiry_target_total * 12 / results_expiry_months, 2) if results_expiry_months else 0.0,
+        "expiry_target_gap_observed_inr": round(expiry_target_total, 2),
+        "forecast_share_of_quantified_recoverable_inr_pct": 0.0,
+        "forecast_share_status": "0% demonstrated from available data; no forecast-linked recoverable rupee amount is established.",
+        "quarter_end_concentration": quarter_end_concentration,
+        "cfa_order_mix_and_fill": cfa_mix,
         "overlaps": overlap,
     }
     return results, summary
@@ -617,20 +736,25 @@ def main() -> None:
     results.to_csv(args.output, index=False)
 
     print("\nSizing results (quarterly observations and separate annualized run rates):")
-    with pd.option_context("display.max_rows", None, "display.max_colwidth", 70, "display.width", 180):
-        print(results.to_string(index=False))
+    with pd.option_context("display.max_rows", None, "display.width", 120):
+        # Provenance and full formulas remain in the CSV; keep the terminal
+        # review table compact enough to scan without losing the period/value.
+        print(results[["problem", "inr_value", "period"]].to_string(index=False))
     print("\nClaim screen overlap counts (priority categories 2 > 3 > 4 > 5):")
     for name, count in summary["overlaps"].items():
         print(f"  {name}: {count:,}")
     print("\nWhat would a forecast recover?")
-    print("  Uncovered-order pack run-rate after free packs (not validated lost sales or savings): "
-          f"₹{summary['forecast_addressable_annualized_inr']:,.2f}")
+    print("  Availability problem size (upper bound, not lost sales; excluded from recoverability share): "
+          f"₹{summary['availability_problem_size_annualized_inr']:,.2f}")
     print("  Overlapping invoiced-only gap before free packs (excluded from denominator): "
           f"₹{summary['invoice_only_gap_annualized_diagnostic_inr']:,.2f}")
-    print("  Share of additive annualized screening total represented by the after-free-packs proxy (item 6 overlaps, invoiced-only diagnostic excluded, item 8 is non-INR): "
-          f"{summary['forecast_share_of_additive_annualized_exposure']:.1%}")
-    print("  Validated share of annual loss that a forecast could recover: not estimable from this pack (order status, downstream demand, and contribution margin are absent).")
-    print(f"  Denominator: ₹{summary['forecast_share_denominator_inr']:,.2f}")
+    print(f"  Share of quantified recoverable rupees attributable to forecasting: {summary['forecast_share_of_quantified_recoverable_inr_pct']:.1f}% demonstrated; actual recoverability is not measurable from these extracts.")
+    print(f"  Expiry-claims-above-target screen that planning might influence: ₹{summary['expiry_claims_above_1pct_target_annualized_inr']:,.2f}/year, but no causal attribution is established.")
+    print("\nWhy it may be happening — descriptive signals, not causal proof:")
+    print("Quarter-end primary pack concentration and FOC by FY quarter:")
+    print(summary["quarter_end_concentration"].to_string(index=False))
+    print("\nCFA order share and fill rate by fiscal year (free packs included in displayed fill rate):")
+    print(summary["cfa_order_mix_and_fill"].to_string(index=False))
     print("\nQBR reconciliation checks (case-pack figures, Q1 FY27):")
     print(f"  FOC / primary sales from extracts: {summary['fy27_q1_free_goods_pct']:.2f}% (QBR: 3.69%)")
     print(f"  Invoice quantity / ordered quantity: {summary['fy27_q1_fill_rate_by_sizing_method_pct']:.2f}%; including free packs: {summary['fy27_q1_fill_rate_including_free_pct']:.2f}% (QBR: 90.9%). Including free packs nearly reconciles; confirm the official numerator/denominator and whether free packs count as fulfillment.")

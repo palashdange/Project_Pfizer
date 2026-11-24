@@ -130,7 +130,9 @@ Use the final session to compare candidate slices against four questions:
 3. Is there a named business owner who can review alerts and act within current authority?
 4. Can the pilot establish a baseline and a fair comparison within the available time?
 
-The current candidate is a read-only exception queue covering short-shelf-life dispatches, CFA/SKU stock imbalances, batches nearing expiry, and claims needing duplicate or policy review. Narrow it to one workflow if data access or user ownership is weak. Agree measures before launch: alert precision, review effort, confirmed exceptions, claim turnaround, stockout SKU-days, aging exposure, and any prevented or recovered duplicate credits. A pilot should not claim reduced returns without sufficient follow-up time and a comparison design.
+The current proposed scope has two separate read-only workflows. **First:** Commercial Finance claims triage for Controller Neha Bansal and the two-person team described in the case, with an authorized human retaining credit-note decisions. **Second:** Supply Chain availability and aging-risk review for Kavita Rao. Confirm both owners and the weekly cadence before treating them as agreed. Do not combine the metrics or imply the same decision-maker owns both.
+
+For claims, agree the register intake, disposition states, authoritative policy text for §§5.2/5.4/5.5/5.6, evidence needed for a match, reviewer effort, and how to measure correctly routed cases and actual credit/recovery outcomes. For Supply Chain, agree the stock/batch data cut, alert usefulness, and availability measures. Neither workflow should claim savings until Finance validates a baseline and actual outcomes.
 
 ## Interview notes template
 

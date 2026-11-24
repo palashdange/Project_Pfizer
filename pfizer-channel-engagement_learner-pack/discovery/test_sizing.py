@@ -113,10 +113,39 @@ class SizingCalculationsTest(unittest.TestCase):
         self.assertEqual(float(invoice_only["inr_value"]), 1400.0)
         self.assertIn("free packs treated as shipped fulfillment", gap["method"])
         self.assertIn("non-additive", invoice_only["problem"])
-        self.assertGreater(summary["forecast_share_of_additive_annualized_exposure"], 0)
-        self.assertLess(summary["forecast_share_of_additive_annualized_exposure"], 1)
-        self.assertGreater(summary["forecast_share_denominator_inr"], summary["forecast_addressable_annualized_inr"])
-        self.assertGreater(summary["invoice_only_gap_annualized_diagnostic_inr"], summary["forecast_addressable_annualized_inr"])
+        self.assertGreater(summary["availability_problem_size_annualized_inr"], 0)
+        self.assertGreater(summary["invoice_only_gap_annualized_diagnostic_inr"], summary["availability_problem_size_annualized_inr"])
+        self.assertEqual(summary["forecast_share_of_quantified_recoverable_inr_pct"], 0.0)
+        self.assertIn("no forecast-linked", summary["forecast_share_status"])
+
+    def test_expiry_claim_gap_uses_fy_sales_and_annualizes_observed_months(self):
+        result, summary = calculate_sizing(self.frames)
+        fy25 = result[
+            result["problem"].str.startswith("Expiry claims above 1% target")
+            & result["period"].eq("FY25")
+        ].iloc[0]
+        annual = result[
+            result["problem"].str.startswith("Expiry claims above 1% target")
+            & result["period"].str.startswith("Annualized")
+        ].iloc[0]
+        # Near-expiry/expired claims total ₹230; 1% of FY25 net sales is ₹36.
+        self.assertEqual(float(fy25["inr_value"]), 194.0)
+        self.assertEqual(float(annual["inr_value"]), 582.0)
+        self.assertEqual(summary["expiry_claims_above_1pct_target_annualized_inr"], 582.0)
+        self.assertEqual(summary["forecast_share_of_quantified_recoverable_inr_pct"], 0.0)
+
+    def test_driver_tables_show_quarter_end_packs_and_cfa_order_mix(self):
+        result, summary = calculate_sizing(self.frames)
+        quarter = summary["quarter_end_concentration"].iloc[0]
+        self.assertEqual(quarter["period"], "FY25 Q1")
+        self.assertEqual(quarter["primary_packs"], 380)
+        self.assertEqual(quarter["last_10_day_packs"], 0)
+        self.assertEqual(quarter["foc_pct_of_primary_net_value"], 5.56)
+
+        cfa = summary["cfa_order_mix_and_fill"].set_index("cfa_code")
+        self.assertEqual(cfa.loc["CFN01", "share_of_fy_ordered_qty_pct"], 20.0)
+        self.assertEqual(cfa.loc["CFN02", "share_of_fy_ordered_qty_pct"], 80.0)
+        self.assertEqual(cfa.loc["CFN02", "fill_rate_including_free_pct"], 70.0)
 
 
 if __name__ == "__main__":

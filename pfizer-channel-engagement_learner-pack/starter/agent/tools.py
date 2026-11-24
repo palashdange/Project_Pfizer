@@ -251,10 +251,9 @@ def claim_email_record(email_id: str, data_dir: Path = DATA) -> dict:
 
 
 def shelf_life_report(data_dir: Path = DATA, limit: int = 25) -> dict:
-    """Find primary-sales invoice lines below the minimum shelf-life threshold.
+    """Find primary-sales invoice lines below the RSL threshold on invoice date.
 
-    Invoice date is used as a proxy for dispatch date because the sales extract
-    does not contain a separate dispatch-date field.
+    CO-POL-014 §7.1 defines the RSL measurement on the invoice date.
     """
     if not isinstance(limit, int) or not 1 <= limit <= 100:
         return {"error": "limit must be an integer between 1 and 100"}
@@ -336,7 +335,8 @@ def shelf_life_report(data_dir: Path = DATA, limit: int = 25) -> dict:
     return {
         "result_grain": "one primary_sales.csv invoice line",
         "threshold_pct": MIN_REMAINING_SHELF_LIFE_PCT,
-        "date_used_as_dispatch_proxy": "invoice_date",
+        "rsl_date_basis": "invoice_date",
+        "policy_reference": "CO-POL-014 §7.1",
         "evaluated_count": evaluated_count,
         "flagged_count": len(flagged),
         "unevaluable_count": len(unevaluable),
@@ -558,6 +558,8 @@ def primary_shipments_forecast(
     seen_rows = set()
     duplicate_source_rows = []
     monthly = {}
+    fulfillment_groups = {}
+    fulfillment_invalid_rows = []
     row_count = 0
     invalid_rows = []
     earliest_month = None
@@ -604,6 +606,52 @@ def primary_shipments_forecast(
             record["invoiced_quantity"] += invoiced_qty
             record["free_quantity"] += free_qty
             record["source_rows"].append(source_row)
+
+            # Keep a separate order-level aggregation so split batch rows do not
+            # repeat the order quantity and free packs count as shipped units.
+            try:
+                ordered_text = (row.get("ordered_qty") or "").replace(",", "").strip()
+                pts_inr = Decimal((row.get("pts_inr") or "").replace(",", "").strip())
+                # Blank ordered quantities exist in the extract; mirror the sizing analysis by
+                # treating them as missing, while still retaining this row's shipped quantities.
+                ordered_qty = Decimal(ordered_text) if ordered_text else None
+                if ordered_qty is not None and (not ordered_qty.is_finite() or ordered_qty < 0):
+                    raise ValueError("Ordered quantity must be finite and non-negative")
+                if not pts_inr.is_finite() or pts_inr < 0:
+                    raise ValueError("PTS must be finite and non-negative")
+                invoice_no = (row.get("invoice_no") or "").strip().upper()
+                stockist = (row.get("stockist_code") or "").strip().upper()
+                if not invoice_no or not stockist:
+                    raise ValueError("Invoice number or stockist code is missing")
+                order_key = (invoice_no, invoice_date, cfa, stockist, sku)
+                order = fulfillment_groups.setdefault(order_key, {
+                    "invoice_no": invoice_no,
+                    "invoice_date": invoice_date,
+                    "cfa_code": (row.get("cnf_code") or "").strip(),
+                    "stockist_code": stockist,
+                    "sku_code": sku,
+                    "ordered_qty": None,
+                    "invoiced_qty": Decimal("0"),
+                    "free_qty": Decimal("0"),
+                    "pts_inr": pts_inr,
+                    "source_rows": [],
+                })
+                if order["pts_inr"] != pts_inr:
+                    raise ValueError("Inconsistent PTS within invoice, stockist, SKU and CFA")
+                if ordered_qty is not None:
+                    order["ordered_qty"] = (
+                        ordered_qty if order["ordered_qty"] is None
+                        else max(order["ordered_qty"], ordered_qty)
+                    )
+                order["invoiced_qty"] += invoiced_qty
+                order["free_qty"] += free_qty
+                order["source_rows"].append(source_row)
+            except (ValueError, InvalidOperation) as exc:
+                fulfillment_invalid_rows.append({
+                    "source_file": sales_path.name,
+                    "source_row": source_row,
+                    "reason": str(exc),
+                })
 
     # Fail closed: a malformed source line could change the latest month or a baseline total.
     if invalid_rows:
@@ -666,6 +714,102 @@ def primary_shipments_forecast(
 
     forecasts.sort(key=lambda row: (row["forecast_month"], row["cfa_code"], row["sku_code"]))
     not_forecastable.sort(key=lambda row: (row["forecast_month"], row["cfa_code"], row["sku_code"]))
+
+    # Summarize the full source cut or the selected CFA/SKU using the same grain
+    # as discovery. Keep the pre-free-packs measure explicitly non-additive.
+    order_rows = [
+        order for order in fulfillment_groups.values()
+        if order["ordered_qty"] is not None
+        if (not normalized_cfa or normalize_cfa_code(order["cfa_code"]) == normalized_cfa)
+        and (not normalized_sku or order["sku_code"] == normalized_sku)
+    ]
+    if fulfillment_invalid_rows:
+        fulfillment_screen = {
+            "status": "unavailable",
+            "reason": "Order-gap values withheld because order quantities, PTS, or invoice identifiers failed validation.",
+            "invalid_row_count": len(fulfillment_invalid_rows),
+            "invalid_rows": fulfillment_invalid_rows[:limit],
+        }
+    elif not order_rows:
+        fulfillment_screen = {
+            "status": "unavailable",
+            "reason": "No matching order records were found for the selected CFA and SKU.",
+            "invalid_row_count": 0,
+            "invalid_rows": [],
+        }
+    else:
+        for order in order_rows:
+            order["invoice_month"] = date(order["invoice_date"].year, order["invoice_date"].month, 1)
+            order["uncovered_qty"] = max(
+                Decimal("0"), order["ordered_qty"] - order["invoiced_qty"] - order["free_qty"]
+            )
+            order["after_free_value"] = order["uncovered_qty"] * order["pts_inr"]
+            order["invoice_only_gap_qty"] = max(
+                Decimal("0"), order["ordered_qty"] - order["invoiced_qty"]
+            )
+            order["invoice_only_gap_value"] = order["invoice_only_gap_qty"] * order["pts_inr"]
+
+        observed_months = len({order["invoice_month"] for order in order_rows})
+        period_start = min(order["invoice_month"] for order in order_rows).isoformat()[:7]
+        period_end = max(order["invoice_month"] for order in order_rows).isoformat()[:7]
+
+        def metric_examples(amount_key):
+            examples = sorted(order_rows, key=lambda row: row[amount_key], reverse=True)
+            output = []
+            for order in (row for row in examples if row[amount_key] > 0):
+                output.append({
+                    "invoice_no": order["invoice_no"],
+                    "invoice_date": order["invoice_date"].isoformat(),
+                    "cfa_code": order["cfa_code"],
+                    "stockist_code": order["stockist_code"],
+                    "sku_code": order["sku_code"],
+                    "ordered_qty": _quantity_for_json(order["ordered_qty"]),
+                    "invoiced_qty": _quantity_for_json(order["invoiced_qty"]),
+                    "free_qty": _quantity_for_json(order["free_qty"]),
+                    "shortfall_packs": _quantity_for_json(order["uncovered_qty"]),
+                    "invoiced_only_gap_packs": _quantity_for_json(order["invoice_only_gap_qty"]),
+                    "pts_inr": _quantity_for_json(order["pts_inr"]),
+                    "screened_value_inr": _quantity_for_json(order[amount_key]),
+                    "source_file": sales_path.name,
+                    "source_rows": order["source_rows"],
+                })
+                if len(output) == 3:
+                    break
+            return output
+
+        after_free_total = sum((row["after_free_value"] for row in order_rows), Decimal("0"))
+        after_free_packs = sum((row["uncovered_qty"] for row in order_rows), Decimal("0"))
+        invoice_only_total = sum((row["invoice_only_gap_value"] for row in order_rows), Decimal("0"))
+        fulfillment_screen = {
+            "status": "available",
+            "source_file": sales_path.name,
+            "result_grain": "one order group per invoice, stockist, SKU, CFA, and invoice date",
+            "data_period_start": period_start,
+            "data_period_end": period_end,
+            "observed_months": observed_months,
+            "annualization_method": f"Observed value ÷ {observed_months} months × 12; run-rate illustration, not savings.",
+            "cfa_filter": normalized_cfa or None,
+            "sku_filter": normalized_sku or None,
+            "exact_duplicate_rows_removed": len(duplicate_source_rows),
+            "after_free_packs": {
+                "label": "Ordered packs not covered by invoiced or free packs",
+                "observed_uncovered_packs": _quantity_for_json(after_free_packs),
+                "observed_value_inr": _quantity_for_json(after_free_total),
+                "annualized_value_inr": _quantity_for_json(after_free_total * 12 / observed_months),
+                "formula": "max(ordered_qty − invoiced_qty − free_qty, 0) × PTS",
+                "source_examples": metric_examples("after_free_value"),
+            },
+            "invoiced_only_gap": {
+                "label": "Invoiced-only gap before free packs",
+                "observed_value_inr": _quantity_for_json(invoice_only_total),
+                "annualized_value_inr": _quantity_for_json(invoice_only_total * 12 / observed_months),
+                "formula": "max(ordered_qty − invoiced_qty, 0) × PTS",
+                "additive": False,
+                "source_examples": metric_examples("invoice_only_gap_value"),
+            },
+            "interpretation": "Both values are gross screening proxies, not confirmed lost sales or savings. Free packs are counted as shipped fulfillment; the invoiced-only gap overlaps the after-free-packs measure and is not additive.",
+        }
+
     return {
         "result_grain": "one primary shipment forecast per CFA, SKU, and target month",
         "forecast_type": "primary shipments into the channel; not downstream demand",
@@ -691,6 +835,7 @@ def primary_shipments_forecast(
         "not_forecastable": not_forecastable[:limit],
         "results_truncated": len(forecasts) > limit,
         "not_forecastable_truncated": len(not_forecastable) > limit,
+        "order_fulfillment_screen": fulfillment_screen,
         "interpretation": "This is a transparent historical shipment baseline, not a demand forecast or accuracy guarantee. Validate with planners before operational use.",
     }
 
@@ -723,8 +868,8 @@ def lookup_claim_email(email_id: str) -> dict:
 def find_short_shelf_life_shipments(limit: int = 25) -> dict:
     """Find primary-sales invoice lines below the 60% shelf-life policy threshold.
 
-    Uses invoice_date as a proxy for dispatch date and returns source rows,
-    batch dates, calculated percentage, and rows that could not be evaluated.
+    CO-POL-014 §7.1 defines RSL on invoice_date. Returns source rows, batch dates,
+    calculated percentage, and rows that could not be evaluated.
     Use for questions about short-dated shipments or shelf-life policy checks.
     """
     return shelf_life_report(DATA, limit)

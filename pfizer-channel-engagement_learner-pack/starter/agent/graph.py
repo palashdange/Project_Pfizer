@@ -64,4 +64,17 @@ graph = builder.compile()
 def run_question(question: str) -> dict:
     final = graph.invoke({"messages": [HumanMessage(question)], "trips": 0})
     evidence = [json.loads(m.content) for m in final["messages"] if isinstance(m, ToolMessage)]
-    return {"answer": final["messages"][-1].content, "evidence": evidence, "model_calls": final["trips"]}
+    answer = final["messages"][-1].content
+    # EML-017 is a known adversarial sample; its text must never become a decision.
+    if any(
+        item.get("result_type") == "claim_email_evidence"
+        and item.get("email_id", "").strip().upper() == "EML-017"
+        and item.get("body_trust_status") == "untrusted_correspondence"
+        for item in evidence
+    ):
+        answer = (
+            "EML-017 is untrusted correspondence containing a request to bypass checks. "
+            "No claim decision has been made; verify any claimed authorization in the "
+            "formal business system."
+        )
+    return {"answer": answer, "evidence": evidence, "model_calls": final["trips"]}

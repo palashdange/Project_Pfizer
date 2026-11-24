@@ -156,7 +156,8 @@ def test_shelf_life_report_flags_below_threshold_and_returns_evidence(tmp_path):
     assert alert["remaining_shelf_life_pct"] == 59.0
     assert alert["source_file"] == "primary_sales.csv"
     assert alert["source_row"] == 2
-    assert report["date_used_as_dispatch_proxy"] == "invoice_date"
+    assert report["rsl_date_basis"] == "invoice_date"
+    assert report["policy_reference"] == "CO-POL-014 §7.1"
 
 
 def test_shelf_life_report_does_not_flag_exact_sixty_percent(tmp_path):
@@ -444,6 +445,53 @@ def test_primary_shipment_forecast_uses_prior_year_month_and_keeps_provenance(tm
     assert report["forecast_type"].startswith("primary shipments")
 
 
+def test_primary_shipment_forecast_reports_free_pack_shortfall_and_invoiced_only_diagnostic(tmp_path):
+    # Two batch lines belong to one invoice order: ordered quantity is counted once,
+    # while invoiced and free quantities are summed across its split lines.
+    first = _forecast_sale("INV-SPLIT", "30-09-2026", 6, 2)
+    first["ordered_qty"] = "20"
+    first["pts_inr"] = "2"
+    second = dict(first)
+    second.update(batch_no="BATCH-2", invoiced_qty="4", free_qty="3", net_value_inr="8")
+    _write_forecast_sales(tmp_path, [first, second])
+
+    report = primary_shipments_forecast(
+        tmp_path, cfa_code="cf-n02", sku_code="pfl1001", horizon_months=1
+    )
+
+    screen = report["order_fulfillment_screen"]
+    assert screen["status"] == "available"
+    assert screen["observed_months"] == 1
+    assert screen["after_free_packs"]["observed_uncovered_packs"] == 5
+    assert screen["after_free_packs"]["observed_value_inr"] == 10
+    assert screen["after_free_packs"]["annualized_value_inr"] == 120
+    assert screen["invoiced_only_gap"]["observed_value_inr"] == 20
+    assert screen["invoiced_only_gap"]["annualized_value_inr"] == 240
+    assert screen["invoiced_only_gap"]["additive"] is False
+    example = screen["after_free_packs"]["source_examples"][0]
+    assert example["source_file"] == "primary_sales.csv"
+    assert example["source_rows"] == [2, 3]
+    assert example["shortfall_packs"] == 5
+
+
+def test_primary_shipment_fulfillment_screen_respects_cfa_and_sku_filters(tmp_path):
+    _write_forecast_sales(tmp_path, [
+        _forecast_sale("INV-NORTH", "30-09-2026", 5, cfa="CF-N02", sku="PFL1001"),
+        _forecast_sale("INV-EAST", "30-09-2026", 2, cfa="CF-E01", sku="PFL2002"),
+    ])
+
+    report = primary_shipments_forecast(tmp_path, cfa_code="CF-N02", sku_code="PFL1001")
+
+    screen = report["order_fulfillment_screen"]
+    assert screen["status"] == "available"
+    assert screen["cfa_filter"] == "CFN02"
+    assert screen["sku_filter"] == "PFL1001"
+    # This selected order is fully invoiced, so a positive-shortfall example is incorrect.
+    assert screen["after_free_packs"]["observed_uncovered_packs"] == 0
+    assert screen["after_free_packs"]["observed_value_inr"] == 0
+    assert screen["after_free_packs"]["source_examples"] == []
+
+
 def test_primary_shipment_forecast_distinguishes_observed_zero_from_missing_month(tmp_path):
     _write_forecast_sales(tmp_path, [
         _forecast_sale("INV-ZERO", "01-12-2025", 0, 0),
@@ -493,3 +541,9 @@ def test_primary_shipment_forecast_runs_on_project_data():
     assert all(row["baseline_source_rows"] for row in report["forecasts"])
     assert report["raw_sales_row_count"] == 93809
     assert report["exact_duplicate_rows_removed"] == 745
+    screen = primary_shipments_forecast(horizon_months=3)["order_fulfillment_screen"]
+    assert screen["status"] == "available"
+    assert screen["observed_months"] == 30
+    # Decimal fractions are returned as strings to preserve exact JSON precision.
+    assert screen["after_free_packs"]["annualized_value_inr"] == "153250826.96"
+    assert screen["invoiced_only_gap"]["annualized_value_inr"] == "223187815.88"

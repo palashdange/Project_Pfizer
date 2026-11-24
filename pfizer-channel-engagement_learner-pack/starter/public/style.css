@@ -56,6 +56,17 @@ button:disabled, input:disabled { cursor: wait; opacity: .7; }
 .metric { display: flex; flex-direction: column; gap: 3px; border: 1px solid #e1e6ef; background: white; border-radius: 9px; padding: 12px; }
 .metric strong { font-size: 20px; color: #123b70; }
 .metric span { color: #667085; font-size: 12px; line-height: 1.3; }
+.fulfillment-screen { margin: 18px 0; }
+.fulfillment-screen h4 { margin-bottom: 6px; }
+.fulfillment-screen h5 { margin: 14px 0 8px; }
+.fulfillment-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 12px 0; }
+.fulfillment-metric { display: flex; flex-direction: column; align-items: flex-start; gap: 7px; min-width: 0; border: 1px solid #c9d9ee; border-left: 4px solid #3973c6; border-radius: 9px; background: #f7faff; padding: 14px; }
+.fulfillment-metric.diagnostic { border-color: #e1e6ef; border-left-color: #8b95a7; background: #fafbfc; }
+.fulfillment-metric strong { color: #123b70; font-size: 23px; }
+.fulfillment-metric > span { color: #596579; font-size: 12px; line-height: 1.4; }
+.fulfillment-metric .metric-label { color: #1b2033; font-size: 14px; font-weight: 700; }
+.fulfillment-metric code { max-width: 100%; color: #475467; white-space: normal; overflow-wrap: anywhere; font-size: 12px; }
+.non-additive { border-radius: 4px; background: #fff0e6; color: #8a3d0b !important; padding: 4px 6px; font-weight: 750; }
 .interpretation { background: #eef5ff; border-left: 3px solid #3973c6; padding: 10px 12px; border-radius: 4px; color: #304b70; font-size: 13px; }
 .nested-list { margin: 0; padding-left: 18px; }
 .nested-list li + li { margin-top: 5px; }
@@ -86,6 +97,7 @@ pre { overflow: auto; max-height: 420px; background: #fff; border: 1px solid #e1
   .scenario-heading, .scenario-item { align-items: stretch; flex-direction: column; }
   .scenario-action { align-self: flex-start; }
   .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fulfillment-metrics { grid-template-columns: 1fr; }
   .evidence-fields, .stock-columns { grid-template-columns: 1fr; }
   .stock-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   form { align-items: stretch; }

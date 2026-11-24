@@ -103,8 +103,7 @@ def remaining_shelf_life_percent(
 ) -> float:
     """Return the percentage of total shelf life remaining on invoice date.
 
-    The policy is defined at dispatch. The supplied sales extract has invoice_date,
-    so callers must disclose that it is being used as a proxy until confirmed.
+    CO-POL-014 §7.1 defines the RSL measurement date as invoice date.
     """
     invoice = parse_date(invoice_date)
     manufactured = parse_date(mfg_date)

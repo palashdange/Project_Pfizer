@@ -80,6 +80,58 @@
     ).join("")}</tbody></table></div>`;
   }
 
+  function formatInr(value) {
+    const amount = Number(value);
+    if (!Number.isFinite(amount)) return escapeHtml(scalar(value));
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency", currency: "INR", maximumFractionDigits: 2,
+    }).format(amount);
+  }
+
+  function renderFulfillmentScreen(screen) {
+    if (!screen || screen.status !== "available") {
+      return `<section class="fulfillment-screen"><h4>Order fulfillment screen</h4><p class="muted">${escapeHtml(screen && screen.reason || "No order fulfillment measure is available.")}</p></section>`;
+    }
+
+    const primary = screen.after_free_packs || {};
+    const diagnostic = screen.invoiced_only_gap || {};
+    const exampleColumns = [
+      ["invoice_no", "Invoice"], ["invoice_date", "Invoice date"], ["cfa_code", "CFA"],
+      ["stockist_code", "Stockist"], ["sku_code", "SKU"], ["ordered_qty", "Ordered packs"],
+      ["invoiced_qty", "Invoiced"], ["free_qty", "Free packs"], ["shortfall_packs", "After-free shortfall"],
+      ["pts_inr", "PTS (INR)"], ["screened_value_inr", "Screened value (INR)"],
+      ["source_file", "Source file"], ["source_rows", "Source row(s)"],
+    ];
+    const diagnosticColumns = exampleColumns.map(([key, label]) => [
+      key === "shortfall_packs" ? "invoiced_only_gap_packs" : key,
+      key === "shortfall_packs" ? "Invoiced-only gap" : label,
+    ]);
+
+    // Keep the invoiced-only diagnostic visually secondary because it overlaps the primary measure.
+    return `<section class="fulfillment-screen">
+      <h4>Order fulfillment screen</h4>
+      <p class="muted">Source: ${escapeHtml(screen.source_file || "primary_sales.csv")} · ${escapeHtml(screen.data_period_start || "—")} to ${escapeHtml(screen.data_period_end || "—")} · ${escapeHtml(scalar(screen.observed_months))} observed months · CFA: ${escapeHtml(screen.cfa_filter || "All")} · SKU: ${escapeHtml(screen.sku_filter || "All")}</p>
+      <div class="fulfillment-metrics">
+        <article class="fulfillment-metric primary">
+          <span class="metric-label">${escapeHtml(primary.label || "After-free-packs shortfall")}</span>
+          <strong>${formatInr(primary.annualized_value_inr)}</strong>
+          <span>Annualized run-rate illustration · ${formatInr(primary.observed_value_inr)} observed · ${escapeHtml(scalar(primary.observed_uncovered_packs))} uncovered packs</span>
+          <code>${escapeHtml(primary.formula || "")}</code>
+        </article>
+        <article class="fulfillment-metric diagnostic">
+          <span class="metric-label">${escapeHtml(diagnostic.label || "Invoiced-only diagnostic")}</span>
+          <strong>${formatInr(diagnostic.annualized_value_inr)}</strong>
+          <span>Annualized run-rate illustration · ${formatInr(diagnostic.observed_value_inr)}</span>
+          <span class="non-additive">OVERLAPPING DIAGNOSTIC · DO NOT ADD TO PRIMARY VALUE</span>
+          <code>${escapeHtml(diagnostic.formula || "")}</code>
+        </article>
+      </div>
+      <p class="interpretation">${escapeHtml(screen.interpretation || "These are screening proxies, not confirmed lost sales or savings.")} ${escapeHtml(screen.annualization_method || "")}</p>
+      <h5>Largest after-free-packs examples</h5>${renderTable(primary.source_examples || [], exampleColumns, "No positive after-free-packs shortfall examples in this selection.")}
+      <h5>Largest invoiced-only examples</h5>${renderTable(diagnostic.source_examples || [], diagnosticColumns, "No positive invoiced-only gap examples in this selection.")}
+    </section>`;
+  }
+
   function stockRowMatches(row, filters) {
     // Filters only search fields and rows present in this source-backed result.
     const searchText = `${row.sku_code || ""} ${row.product_description || ""}`.toLocaleLowerCase();
@@ -185,7 +237,7 @@
       ["batch_no", "Batch"], ["reason", "Why not evaluated"], ["source_file", "Source file"], ["source_row", "Source row"],
     ];
     return `<div class="metric-grid">${metrics.map(([label, value]) => `<div class="metric"><strong>${escapeHtml(scalar(value))}</strong><span>${escapeHtml(label)}</span></div>`).join("")}</div>
-      <p class="interpretation">Policy threshold: ${escapeHtml(scalar(item.threshold_pct))}% remaining shelf life. Invoice date is used as a dispatch-date proxy.</p>
+      <p class="interpretation">Policy threshold: ${escapeHtml(scalar(item.threshold_pct))}% remaining shelf life. CO-POL-014 §7.1 defines RSL on the invoice date.</p>
       <h4>Flagged invoice lines</h4>${renderTable(flagged, shipmentColumns, "No invoice lines were flagged.")}
       ${unevaluable.length ? `<h4>Rows needing review</h4>${renderTable(unevaluable, reviewColumns, "No rows need review.")}` : ""}
       ${item.flagged_results_truncated || item.unevaluable_results_truncated ? '<p class="muted">Some rows are omitted from this result because of the display limit.</p>' : ""}`;
@@ -240,6 +292,7 @@
     ];
     return `<p class="interpretation">${escapeHtml(scalar(item.interpretation))} Latest data month: ${escapeHtml(scalar(item.latest_data_month))}. Forecast window: ${escapeHtml(scalar(item.forecast_start_month))} to ${escapeHtml(scalar(item.forecast_end_month))}. Method: same month last year. ${escapeHtml(scalar(item.data_freshness_note))}</p>
       <div class="metric-grid">${metrics.map(([label, value]) => `<div class="metric"><strong>${escapeHtml(scalar(value))}</strong><span>${escapeHtml(label)}</span></div>`).join("")}</div>
+      ${renderFulfillmentScreen(item.order_fulfillment_screen)}
       <h4>Primary shipment forecast</h4>${renderTable(item.forecasts || [], columns, "No forecast rows could be produced for this selection.")}
       ${(item.not_forecastable || []).length ? `<h4>Months without a baseline</h4>${renderTable(item.not_forecastable, [["cfa_code", "CFA"], ["sku_code", "SKU"], ["forecast_month", "Forecast month"], ["baseline_month", "Baseline month"], ["reason", "Why no forecast"]], "Every requested month has a baseline.")}` : ""}
       ${item.results_truncated || item.not_forecastable_truncated ? '<p class="muted">Some forecast rows were omitted by the display limit. Add CFA and SKU filters to narrow the result.</p>' : ""}`;

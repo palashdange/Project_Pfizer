@@ -1,0 +1,123 @@
+# Project Sankalp progress log
+
+**Last updated:** 24 November 2026  
+**Project:** Fictional Pfizer domestic-channel training case  
+**Purpose:** Keep a dated, evidence-based record of what has been completed, what is in progress, and what remains. This is a project work log, not a claim of real Pfizer validation or realized savings.
+
+## Current status
+
+The learner-pack contains discovery and data-sizing work plus a local, read-only LangGraph copilot prototype. The current proposed scope has two separate workflows: first, Commercial Finance claims triage for Controller Neha Bansal and the two-person team described in the case; second, Supply Chain availability and aging-risk review for Kavita Rao. The role names, team size, and workflows remain hypothetical case assumptions pending validation. The prototype has not been validated with real process owners or deployed for operational use.
+
+## Scope update — 24 November 2026
+
+- Reprioritized the proposed pilot: claims triage is the first workflow; Supply Chain risk review is the second.
+- Updated the active discovery, architecture, workflow, business-flow, graph, stakeholder-validation, business-context, and progress documents to reflect both users and decisions.
+- Reorganized the UI quick actions so claims checks appear first, Supply Chain checks second, and the page describes both user workflows.
+- Clarified that the assistant may surface evidence states and recommendations for an authorized reviewer, but it cannot approve/reject claims, post credit notes, or replace existing decision rights.
+- Added an explicit implementation boundary: the current claim tool reviews an identified claim but is not a full claims-register queue and does not yet implement every §5.2/§5.4/§5.5/§5.6 route as a verified operational process.
+- Kept the claim values as screening amounts and the Supply Chain rupee figures as order-gap proxies; neither is assumed recoverable or realized savings.
+
+## Latest update — 24 November 2026
+
+- Added an order-fulfillment screen to the shipment-baseline result in the UI.
+- The screen separates the **after-free-packs shortfall** from the **invoiced-only gap diagnostic**. It marks the latter as overlapping and not additive.
+- Added period, filter scope, formulas, annualized and observed values, and example invoice evidence with source rows.
+- The backend groups split invoice/SKU lines so ordered quantity is counted once and invoiced/free quantities are summed. Blank ordered quantities are treated as missing, consistent with the sizing analysis.
+- Updated frontend asset versions so a refreshed browser loads the changed JavaScript and CSS.
+- Added Python and JavaScript coverage for split-line arithmetic, filters, figures, provenance, and the non-additive warning.
+- **Data-backed full-pack output:** ₹15.33 crore annualized after free packs and ₹22.32 crore annualized invoiced-only, using 30 observed months. Both are gross PTS-valued screening proxies. The second measure overlaps the first and must not be added to it.
+- **Verification at that time:** Node frontend checks passed (14 tests); the focused split-line calculation and Python compile check passed. The starter Python suite was unavailable in the active environment then; the later sizing task below ran its own focused suite in a temporary environment.
+
+## Discovery sizing update — 24 November 2026
+
+- Revised `Discovery_note.md` to about 1,000 words plus tables. The primary weekly user is the Commercial Finance claims executive (owner Neha Bansal, Controller); the secondary workflow is Kavita Rao’s review of expiry-risk batches and short CFAs.
+- Added the CFO’s expiry-claims-above-1% target-gap calculation to `sizing.py` and `sizing_results.csv`. It compares claim-date-FY expiry claim value with same-FY primary net value, floors each FY gap at zero, and annualizes the sum over all 30 months of claims-data coverage. Result: FY25 ₹0; FY26 ₹1.67 crore; FY27 (partial through Sep 2026) ₹1.99 crore; annualized ₹1.46 crore. This is a target-gap screen, not proven recoverable cash.
+- Added quarter-end pack-share/FOC and CFA order-share/fill-rate tables. FY25 Q3, the quarter containing the 15 Nov 2024 v4.1 revision, shows 35.35% of quarter packs in its last 10 days and FOC at 4.95%; the timing is descriptive, not causal proof.
+- The order gap is called “availability problem size (upper bound, not lost sales)” at ₹15.33 crore/year and removed from the ranked claims/returns list. The note reports 0% of candidate rupees as currently demonstrated forecast-recoverable; the true share remains unmeasurable from this pack.
+- Cross-checked the policy revision history and stakeholder quotes in the supplied PDFs. Cited relevant voice-note entries for scheme stock and allocation concerns while preserving them as qualitative reports.
+- **Verification:** `python discovery/sizing.py` was run through `uv` with pandas in a temporary environment and regenerated 213 CSV rows. `pytest discovery/test_sizing.py` passed (8 tests). `git diff --check` passed.
+
+## Work completed so far
+
+### Discovery and business understanding
+
+- Reviewed the readers guide, project brief, build/deploy guide, company/channel overview, trade-terms and returns policy, CFA agreement/SOP, stakeholder interview notes, inbox export, QBR/finance pack, seven structured CSV extracts, and voice-note transcripts supplied in the conversation.
+- Created a discovery evidence set covering the business context, voice-note findings, case-data validation, weekly workflow, architecture, and diagrams. See [Discovery_note.md](Discovery_note.md), [business_problem_validation.md](business_problem_validation.md), [voice_note_evidence_log.md](voice_note_evidence_log.md), [weekly_review_workflow.md](weekly_review_workflow.md), and [architecture_note.md](architecture_note.md).
+- Added business-flow and solution-flow diagrams, a current graph diagram, stakeholder validation questions, and a project context note. Earlier overlapping implementation plans and charters have been moved to `discovery/archive/` so the active recommendations are easier to distinguish from drafts.
+- Kept role-play and voice-note claims distinct from facts verified in structured extracts. Findings are for the fictional case and do not establish real Pfizer operations.
+- Ranked measurable signals and documented data gaps. The first proposed user is Controller Neha Bansal with the case-described claims team; the second is Head of Supply Chain Kavita Rao with planning partner Vaishali Kapoor. These are not real-client validations.
+
+### Data sizing and financial framing
+
+- Added `discovery/sizing.py` and its tests to clean/deduplicate case files, normalize codes and dates, calculate quarterly screening measures, and write `discovery/sizing_results.csv` with methods and source examples.
+- Reconciled the Q1 FY27 free-goods rate against the QBR and documented the difference between observed data, proposed explanations, and hypotheses that the pack cannot verify.
+- Documented that PTS-valued order gaps are proxies, not confirmed lost sales. Stockist sell-through, stock-on-hand, cancellation/order status, and contribution margin are absent.
+- Kept the ₹22.32 crore invoiced-only gap as an overlapping diagnostic. The ₹15.33 crore after-free-packs value is the comparable primary order-gap screen, not a forecast benefit or promise of savings.
+- The discovery note records other ranked screens, policy references, owners to involve, and open questions. Earlier planning drafts are retained in `discovery/archive/`.
+
+### Copilot and interface
+
+- Built a FastAPI app with `/api/health` and `/api/ask`, and a LangGraph model/tool loop capped at four model trips. The current model-provider configuration uses OpenRouter via an environment key. The app is read-only and does not write to ERP/WMS or approve claims.
+- Added deterministic Python tools for batch and SKU context, short-shelf-life shipment screening, CFA stock imbalance signals, claim-record review, untrusted claim-email lookup, and a same-month-last-year primary-shipment baseline. Results preserve source file/row evidence where available; missing or ambiguous information is surfaced for review.
+- The baseline uses invoiced plus free packs and explicitly describes itself as a shipment baseline, not downstream demand. It now also shows the order-gap measures documented in the Latest update above.
+- Added prompt instructions that require tools for facts, prohibit invented batch/date/number answers, treat correspondence as untrusted input, and keep claims screening advisory.
+- Added a plain HTML/CSS/JavaScript interface with six common checks, historical claim/email scenario replay buttons, readable evidence cards/tables, row-level source references, an updating single-line processing status, and responsive styling.
+- Added CFA stock product names and filters, zero-stock highlighting, and readable shipment-baseline results.
+- The scenario replay is a local demonstration using historical case records; there is no live mailbox, SSE/event queue, scheduled job, persistent disposition log, or operational work queue.
+- Added frontend checks and Python tests for API wiring, tools, rules, and evidence formatting. Current browser UI can be served locally by the starter app when its dependencies and API key are configured.
+- Added Vercel configuration and deployment notes for the starter app. Deployment is not recorded as complete. The user previously reported that the Vercel login page was not loading; local replay was used as the available demonstration path.
+
+## In progress / current working-tree changes
+
+The 24 November UI work is currently in the working tree and should be reviewed before committing or pushing:
+
+- `starter/agent/tools.py`
+- `starter/public/evidence.js`
+- `starter/public/index.html`
+- `starter/tests/test_frontend.js`
+- `starter/public/style.css`
+- `starter/tests/test_tools.py`
+- `starter/tests/test_evidence.js`
+- `discovery/Discovery_note.md`
+- `discovery/weekly_review_workflow.md`
+- `discovery/architecture_note.md`
+- `discovery/solution_business_flow.md`
+- `discovery/Graph_mermaid.md`
+- `discovery/stakeholder_validation_guide.md`
+- `discovery/step_1_business_context.md`
+- `discovery/business_problem_validation.md`
+- `discovery/project_progress.md`
+- `discovery/sizing.py`
+- `discovery/sizing_results.csv`
+- `discovery/test_sizing.py`
+
+## Remaining work
+
+- Run the complete Python suite after making `pytest` available in the starter environment; resolve any failures.
+- Review the new annualized figures and sample rows against `discovery/sizing.py` / `sizing_results.csv` and hand-check a few source records.
+- Confirm that the written architecture note distinguishes implemented graph behavior from proposed architecture; parts of the note contain target-design material and must not be presented as shipped code.
+- Confirm the screen and labels in the browser at desktop and mobile widths.
+- Continue the planned simulation/evaluation work: define representative scenarios, expected outcomes, and reviewer dispositions; report limits rather than asserting savings.
+- Decide whether to complete Vercel deployment once account login is available. Do not treat local readiness as deployment.
+- Before describing this as a real operating pilot, validate the two users, team size, intake and cadence, source policy interpretation, and decision rights with the relevant case/process owners. Confirm Finance authority separately from Supply Chain alert disposition.
+
+## Update template
+
+Append a dated entry near the top whenever work is completed:
+
+```markdown
+## Update — YYYY-MM-DD
+
+- **Changed:** files or documents updated.
+- **Result:** what now works or what was learned.
+- **Evidence/checks:** commands, test counts, data rows, or manual checks.
+- **Open items:** known limitations or next work.
+```
+
+## Guardrails for future entries
+
+- Distinguish implemented behavior from proposed design.
+- Cite the source file, page, row, or test when reporting a factual result.
+- Label assumptions and role-play inputs as such.
+- Do not describe a proxy as confirmed loss, savings, or realized benefit.
+- Record test/deployment failures and environmental blockers rather than implying those steps passed.

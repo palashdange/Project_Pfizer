@@ -29,7 +29,7 @@ flowchart TD
 
 ## Tools called by the tools node
 
-These are registered Python tool functions in `starter/agent/tools.py`. They are dispatched inside the single LangGraph `tools` node; they are not separate nodes in the compiled graph.
+These are registered Python tool functions in `starter/agent/tools.py`. They are dispatched inside the single LangGraph `tools` node; they are not separate nodes in the compiled graph. The app exposes claim evidence review for the first Commercial Finance workflow and stock/shipment signals for the second Supply Chain workflow. The graph does not render separate queues or authorize either team's decisions.
 
 ```mermaid
 flowchart LR
@@ -38,10 +38,14 @@ flowchart LR
     Dispatch --> Shelf["find_short_shelf_life_shipments(limit)<br/>Invoice lines below 60% policy threshold<br/>primary_sales.csv + batch_master.csv"]
     Dispatch --> Stock["find_cfa_stock_imbalances(limit)<br/>Zero-stock vs positive batch stock by SKU<br/>cnf_stock_snapshot.csv"]
     Dispatch --> Forecast["forecast_primary_shipments(cfa, sku, horizon, limit)<br/>Same month last year baseline with source rows<br/>primary_sales.csv"]
+    Dispatch --> Claim["review_expiry_claim(claim_no)<br/>Claim, prior-credit, batch and billing evidence<br/>expiry_claims.csv + masters + primary_sales.csv"]
+    Dispatch --> Email["lookup_claim_email(email_id)<br/>Original message as untrusted evidence<br/>claim_emails.csv"]
     Batch --> Evidence["Python dict result → JSON ToolMessage"]
     Shelf --> Evidence
     Stock --> Evidence
     Forecast --> Evidence
+    Claim --> Evidence
+    Email --> Evidence
     Evidence --> ModelAgain["Next model call reads tool result"]
 ```
 

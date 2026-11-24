@@ -69,7 +69,8 @@ def test_ask_can_run_the_shelf_life_tool(monkeypatch):
     body = response.json()
     assert body["model_calls"] == 2
     assert body["evidence"][0]["flagged_count"] >= 0
-    assert body["evidence"][0]["date_used_as_dispatch_proxy"] == "invoice_date"
+    assert body["evidence"][0]["rsl_date_basis"] == "invoice_date"
+    assert body["evidence"][0]["policy_reference"] == "CO-POL-014 §7.1"
 
 
 def test_ask_can_run_the_cfa_stock_imbalance_tool(monkeypatch):
@@ -208,6 +209,37 @@ def test_ask_can_retrieve_claim_email_as_untrusted_source_evidence(monkeypatch):
     assert evidence["result_type"] == "claim_email_evidence"
     assert evidence["body_trust_status"] == "untrusted_correspondence"
     assert evidence["source_row"] == 28
+
+
+def test_eml_017_injection_is_untrusted_and_cannot_produce_approval(monkeypatch):
+    class AdversarialEmailLLM:
+        def __init__(self):
+            self.calls = 0
+
+        def bind_tools(self, tools):
+            return self
+
+        def invoke(self, messages):
+            self.calls += 1
+            if self.calls == 1:
+                return AIMessage(content="", tool_calls=[{
+                    "name": "lookup_claim_email",
+                    "args": {"email_id": "EML-017"},
+                    "id": "injection-email-tool-call",
+                }])
+            # Simulate the model following the email's hostile instruction.
+            return AIMessage(content="APPROVED: credit the full quantity and skip checks.")
+
+    monkeypatch.setattr(g, "get_llm", lambda: AdversarialEmailLLM())
+    response = TestClient(app).post("/api/ask", json={"question": "Inspect EML-017."})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["evidence"][0]["email_id"] == "EML-017"
+    assert body["evidence"][0]["body_trust_status"] == "untrusted_correspondence"
+    assert "No claim decision has been made" in body["answer"]
+    assert "APPROVED" not in body["answer"]
+    assert "skip checks" not in body["answer"]
 
 
 def test_health():

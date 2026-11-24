@@ -13,15 +13,17 @@ test("weekly review page exposes read-only status and supported checks", () => {
   assert.match(html, /Read-only decision support/);
   assert.match(html, /No ERP\/WMS write-back/);
   assert.match(html, /Human review required/);
-  assert.match(html, /evidence\.js\?v=9/);
+  assert.match(html, /evidence\.js\?v=10/);
   assert.match(html, /app\.js\?v=7/);
   assert.match(html, /Scan shelf-life exceptions/);
   assert.match(html, /Review CFA stock signals/);
   assert.match(html, /View shipment baseline/);
   assert.match(html, /Look up a batch/);
-  assert.match(html, /Review an expiry claim/);
-  assert.match(html, /Inspect email EML-017/);
+  assert.match(html, /Review a claim/);
+  assert.match(html, /Inspect a claim email/);
   assert.match(html, /Tuesday claims review · scenario replay/);
+  assert.match(html, /1\. Commercial Finance · claims triage/);
+  assert.match(html, /2\. Supply Chain · availability and aging signals/);
   assert.match(html, /not a live inbox or pending-claims queue/);
   assert.match(html, /expiry_claims\.csv rows 3269 and 3596/);
   assert.match(html, /claim_emails\.csv row 28/);
@@ -133,7 +135,7 @@ test("shelf-life evidence includes a readable screening caveat and line details"
     }],
   });
 
-  assert.match(html, /Invoice date is used as a dispatch-date proxy/);
+  assert.match(html, /CO-POL-014 §7\.1 defines RSL on the invoice date/);
   assert.match(html, /Flagged lines/);
   assert.match(html, /<th scope="col">Invoice<\/th>/);
   assert.ok(html.indexOf(">Source file</th>") < html.indexOf(">Invoice date</th>"));

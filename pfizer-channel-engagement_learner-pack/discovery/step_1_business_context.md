@@ -27,6 +27,10 @@ Products move from the central distribution center (CDC) to carrying and forward
 
 Treat this as a hypothesis, not a confirmed diagnosis. In particular, stockist sell-through and inventory are missing; the reported 1% ambition also needs a precise Finance definition before it can be treated as a measurable target. See [business_problem_validation.md](business_problem_validation.md) and [implementation_plan.md](archive/implementation_plan.md).
 
+## Proposed pilot users and decisions
+
+The current working scope is two separate read-only workflows. First, Commercial Finance Controller Neha Bansal and the two-person claims team described in the case review the claims register for timing, invoice/ledger evidence, quantity, and possible prior-credit signals. The tool may surface a candidate to proceed for authorized processing, an exception, or a need for human review; an authorized person retains the final credit decision. Second, Head of Supply Chain Kavita Rao reviews CFA/SKU availability and batch-aging signals. These are proposed case roles and workflow assumptions, not validation with real process owners. See [Discovery_note.md](Discovery_note.md) and [weekly_review_workflow.md](weekly_review_workflow.md) for scope and evidence limits.
+
 ## Sources and interpretation notes
 
 - [Company and channel overview](../data-pack/01_company_and_channel_overview.pdf) and [C&F agreement and SOP](../data-pack/03_cnf_agreement_and_sop.pdf) describe channel roles and warehouse practices.

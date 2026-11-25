@@ -109,4 +109,9 @@ Each entry records the selected direction, the main alternative, the rationale, 
 **Why we chose this:** Her ask is "not another forecast. I need to know where the stock is going to expire before it does" (interviews p. 2). The snapshot has stock by batch with a rolling outward rate, so code can apply §7.1–7.2 and the C&F §2.2 norm without forecasting. The 60% shelf-life figure is labelled "stockists may refuse", not a write-off; write-off risk is the 60-day block. The FEFO signal is a pilot threshold (2× the other C&Fs' median) and a prompt to check the WMS, not proof. Transfers are not suggested: they need her approval and 10–14 days (§2.5).
 **Evidence:** CO-POL-014 §7.1–7.2 p.4; C&F agreement clauses 4.3, 6.3, Schedule 2 §2.2–2.5; cnf_stock_snapshot.csv; starter/agent/stock.py; tests/test_rules.py, tests/test_graph.py; check set stock_latest_01.
 
+**22. Decision:** Give every model call a 20-second timeout and one retry, then fall back to the existing failure path.
+**Options considered:** no timeout (rely on the Vercel function limit) vs. timeout without retry vs. timeout with one retry vs. several retries.
+**Why we chose this:** A review normally answers in 2–3 s, so 20 s means the provider is stuck. One retry covers a dropped connection; more retries would only keep the user waiting. After that, code takes over: a failed parse goes to a person and a failed explanation uses the code text, so the route never depends on the model. Both values are pilot choices, not policy numbers, and sit in `config.py`.
+**Evidence:** starter/config.py (MODEL_TIMEOUT_SECONDS, MODEL_MAX_RETRIES); starter/agent/llm.py; tests/test_llm.py (fake provider that times out: one timeout then success; two timeouts stop after one retry with the code route kept; stuck parse goes to a person).
+
 PDF page references checked against the source PDFs on 24 Nov 2026. Code, Markdown, and CSV references checked directly.

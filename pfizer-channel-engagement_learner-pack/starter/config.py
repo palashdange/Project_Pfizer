@@ -25,6 +25,12 @@ FOC_CAP_PCT = 3.0  # CO-POL-014 v4.2 §4.4 p.2
 # Time allowed for CFA verification, expressed in working days.
 CFA_VERIFICATION_WINDOW_WORKING_DAYS = 10  # CO-POL-014 v4.2 §5.6 p.4
 
+# Model call limits. A PILOT DESIGN CHOICE, not a policy number: a review normally answers in 2-3 s,
+# so 20 s means the provider is stuck. One retry covers a dropped connection; after that the graph's
+# existing failure path takes over (parse -> NEEDS_PERSON, explain -> code fallback text).
+MODEL_TIMEOUT_SECONDS = 20
+MODEL_MAX_RETRIES = 1
+
 # Near-repeat claim screen. A PILOT DESIGN CHOICE, not a CO-POL-014 number: §5.6 p.4 only says to
 # check for an earlier claim on the same stockist and batch. Chosen from the register: 17 claims sit
 # within 1% or 1 pack of an earlier claim on the same stockist/batch before the spread widens.

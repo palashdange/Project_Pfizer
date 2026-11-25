@@ -38,8 +38,9 @@ def _normalize_row(row: dict) -> dict:
     for field in _CODE_FIELDS:
         if field in normalized and normalized[field] is not None:
             normalized[field] = normalized[field].strip().upper()
-            # CFA aliases such as CF-E01 and CFE01 must resolve to the same key.
-            if field in {"cnf_code", "cfa_code"}:
+            # CFA and SKU aliases such as CF-E01/CFE01 and PFL-1303/PFL1303 must resolve to the same key
+            # (143 claim rows write the SKU with a hyphen).
+            if field in {"cnf_code", "cfa_code", "sku_code"}:
                 normalized[field] = normalized[field].replace("-", "")
     return normalized
 

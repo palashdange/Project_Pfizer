@@ -1,13 +1,15 @@
 """Deterministic business rules used by the agent tools."""
 
 from calendar import monthrange
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 import re
 from typing import Optional
 
 from config import (
     BREAKAGE_SHORT_SUPPLY_WINDOW_DAYS,
+    CFA_TOPUP_MONTHS,
+    DAYS_PER_MONTH,
     DUPLICATE_NEAR_QTY_MIN_PACKS,
     DUPLICATE_NEAR_QTY_TOLERANCE_PCT,
     SCHEME_LOOKBACK_MONTHS,
@@ -259,6 +261,53 @@ def scheme_order_eligibility(order_packs: Decimal, previous_months_packs: list[D
         "threshold": threshold,
         "multiple": Decimal(order_packs) / average,
     }
+
+
+def dispatch_deadlines(expiry: date, total_shelf_life_days: int) -> dict:
+    """Last dates a batch can leave the C&F (CO-POL-014 §7.1-7.2).
+
+    - block: under 60 days to expiry it cannot be dispatched and is written off (§7.1-7.2).
+    - short_shelf_life: below 60% of total shelf life a stockist may refuse it (§7.1).
+    """
+    if total_shelf_life_days <= 0:
+        raise ValueError("Total shelf life must be positive")
+    keep_days = round(total_shelf_life_days * MIN_REMAINING_SHELF_LIFE_PCT / 100)
+    return {
+        "block": expiry - timedelta(days=MIN_REMAINING_SHELF_LIFE_DAYS),
+        "short_shelf_life": expiry - timedelta(days=keep_days),
+    }
+
+
+def fefo_packs_at_risk(batches: list[tuple[date, Decimal]], monthly_outward: Decimal,
+                       as_of: date, deadline_key: str, deadlines: list[dict]) -> list[Decimal]:
+    """Packs of each batch that cannot ship before its deadline if the C&F picks first-expiry-first-out.
+
+    `batches` and `deadlines` are in the same order, sorted by expiry. Stock leaves at the current
+    rolling outward rate; earlier-expiry batches go first (C&F clause 6.3), and only packs that can still
+    ship use capacity. Returns whole packs at risk per batch.
+    """
+    if monthly_outward < 0:
+        raise ValueError("Outward rate cannot be negative")
+    per_day = Decimal(monthly_outward) / Decimal(str(DAYS_PER_MONTH))
+    ahead = Decimal("0")
+    at_risk = []
+    for (expiry, packs), deadline in zip(batches, deadlines):
+        days = max((deadline[deadline_key] - as_of).days, 0)
+        can_ship = min(max(per_day * days - ahead, Decimal("0")), Decimal(packs))
+        at_risk.append((Decimal(packs) - can_ship).quantize(Decimal("1"), rounding="ROUND_HALF_UP"))
+        # Only packs that actually ship use outward capacity; blocked or refused stock does not.
+        ahead += can_ship
+    return at_risk
+
+
+def months_of_cover(packs: Decimal, monthly_outward: Decimal) -> dict:
+    """Months of stock at the current outward rate, against the 2-month top-up norm (§2.2)."""
+    if packs <= 0:
+        return {"status": "out_of_stock", "months": Decimal("0")}
+    if monthly_outward <= 0:
+        return {"status": "no_outward", "months": None}
+    months = Decimal(packs) / Decimal(monthly_outward)
+    return {"status": "above_norm" if months > Decimal(str(CFA_TOPUP_MONTHS)) else "within_norm", "months": months}
 
 
 def shift_month(month: date, offset: int) -> date:

@@ -4,7 +4,7 @@
 
 ## 1. User, decision, and the split
 
-**User:** Commercial Finance (owner Neha Bansal, Controller). **Decisions:** weekly, credit, reject, or send each register claim to a person; quarterly, check each quarter-end scheme's cost and compliance with the National Sales Manager, Rohan Mehta (§4.3). Read-only: no credit notes, no SAP/WMS writes. **Code decides; the model only parses and explains.** Every rule, date, join and sum is Python; policy numbers sit in [`config.py`](../starter/config.py) with their clause, rules in [`agent/rules.py`](../starter/agent/rules.py). The model can never change the route.
+**User:** Commercial Finance (owner Neha Bansal, Controller). **Decisions:** weekly, credit, reject, or send each register claim to a person; quarterly, check each quarter-end scheme's cost and compliance with the National Sales Manager, Arjun Sethi, and the CFO, Rohan Mehta, for cap exceptions (§4.3). Read-only: no credit notes, no SAP/WMS writes. **Code decides; the model only parses and explains.** Every rule, date, join and sum is Python; policy numbers sit in [`config.py`](../starter/config.py) with their clause, rules in [`agent/rules.py`](../starter/agent/rules.py). The model can never change the route.
 
 ## 2. Graph
 

@@ -13,7 +13,7 @@ test("weekly review page exposes read-only status and supported checks", () => {
   assert.match(html, /Read-only decision support/);
   assert.match(html, /No ERP\/WMS write-back/);
   assert.match(html, /Human review required/);
-  assert.match(html, /evidence\.js\?v=16/);
+  assert.match(html, /evidence\.js\?v=17/);
   assert.match(html, /app\.js\?v=11/);
   assert.match(html, /Review a claim/);
   assert.match(html, /Inspect a claim email/);
@@ -366,7 +366,7 @@ test("scheme review shows cap, eligibility range, cited checks, and who decides"
   assert.match(html, /primary_sales\.csv:12345/);
   assert.match(html, /§4\.5/);
   assert.deepEqual(resultBadge([], "SCHEME_NEEDS_REVIEW"), { label: "SCHEME NEEDS REVIEW", tone: "reject" });
-  assert.match(decisionOwner("SCHEME_NEEDS_REVIEW"), /Rohan Mehta/);
+  assert.match(decisionOwner("SCHEME_NEEDS_REVIEW"), /National Sales Manager, Arjun Sethi; the CFO, Rohan Mehta/);
   assert.match(renderEvidence({ result_type: "scheme_review", found: false, target: "FY23 Q1", available_quarters: ["FY25 Q1"] }), /not found/);
 });
 

@@ -511,7 +511,7 @@
     if (route === "NEEDS_PERSON") return `A person must review this before any credit. Decides: ${DECISION_OWNER}.`;
     if (route === "NOT_FOUND") return "Not found in the register or the extract; nothing to decide.";
     if (route === "SCHEME_NEEDS_REVIEW" || route === "SCHEME_WITHIN_POLICY") {
-      return "Recommendation only. Decides: Commercial Finance (scheme cost, §4.3) and the National Sales Manager, Rohan Mehta; the CFO above the 3% cap.";
+      return "Recommendation only. Decides: Commercial Finance (scheme cost, §4.3) and the National Sales Manager, Arjun Sethi; the CFO, Rohan Mehta, above the 3% cap.";
     }
     return "";
   }

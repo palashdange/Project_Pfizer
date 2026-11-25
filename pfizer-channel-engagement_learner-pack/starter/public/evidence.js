@@ -442,7 +442,7 @@
       <h3>Stock at ${escapeHtml(item.snapshot)} · all C&Fs</h3>
       <div class="metric-grid">
         <div class="metric"><span>Will ship below the 60% shelf-life norm (§7.1)</span><strong>${formatCompactInr(short.value_inr)}</strong><span>At PTS; stockists may refuse. Not a write-off.</span></div>
-        <div class="metric"><span>Will hit the 60-day block (write-off, §7.2)</span><strong>${formatCompactInr(block.value_inr)}</strong><span>At the current outward rate</span></div>
+        <div class="metric"><span>Will hit the 60-day block (write-off, §7.2)</span><strong>${Number(block.value_inr) > 0 ? formatCompactInr(block.value_inr) : "None"}</strong><span>${Number(block.value_inr) > 0 ? "At the current outward rate" : block.nearest ? `Nothing at this snapshot. Nearest: ${escapeHtml(block.nearest.batch_no)} at ${escapeHtml(block.nearest.cfa)}, ${escapeHtml(block.nearest.days_to_block)} days from its block date.` : "Nothing at this snapshot."}</span></div>
         <div class="metric"><span>C&F-SKU lines out of stock</span><strong>${escapeHtml(outCount)}</strong><span>Snapshot marker: blank batch, zero packs</span></div>
         <div class="metric"><span>Lines above 2 months' cover (§2.2)</span><strong>${escapeHtml(aboveCount)}</strong><span>Top-up norm is 2 months</span></div>
       </div>

@@ -143,6 +143,7 @@ def review_stock(snapshot: Optional[str] = None) -> Optional[dict]:
         "city": "", "short_shelf_life_inr": Decimal("0"), "block_inr": Decimal("0"),
         "out_of_stock": 0, "above_norm": 0, "lines": 0})
     batches_at_risk = []
+    nearest = None  # batch on hand closest to its 60-day block date, for context when nothing is at risk
     for (cfa, sku_code), rows in snapshots[as_of].items():
         sku = skus.get(sku_code, {})
         pts = _d(sku.get("pts_inr"))
@@ -168,6 +169,13 @@ def review_stock(snapshot: Optional[str] = None) -> Optional[dict]:
         pairs = [(expiry, packs) for expiry, packs, _ in stock]
         short = fefo_packs_at_risk(pairs, rate, as_of, "short_shelf_life", deadlines)
         block = fefo_packs_at_risk(pairs, rate, as_of, "block", deadlines)
+        for (expiry, packs, row), deadline in zip(stock, deadlines):
+            days = (deadline["block"] - as_of).days
+            if nearest is None or days < nearest["days_to_block"]:
+                nearest = {"days_to_block": days, "cfa": _cfa_label(cfa), "sku_code": sku_code,
+                           "batch_no": row.get("batch_no"), "expiry_date": row.get("expiry_date"),
+                           "on_hand_packs": format(packs, "f"), "monthly_outward_packs": format(rate, "f"),
+                           "source": f"cnf_stock_snapshot.csv:{row.get('source_row')}"}
         for (expiry, packs, row), short_packs, block_packs in zip(stock, short, block):
             summary["short_shelf_life_inr"] += short_packs * pts
             summary["block_inr"] += block_packs * pts
@@ -203,7 +211,10 @@ def review_stock(snapshot: Optional[str] = None) -> Optional[dict]:
         },
         "expiry_block": {
             "status": "fail" if block_total > 0 else "pass",
-            "reason": f"{_money(block_total)} at PTS will reach 60 days to expiry before it can ship, then be blocked and written off.",
+            "reason": (f"{_money(block_total)} at PTS will reach 60 days to expiry before it can ship, then be blocked and written off."
+                       + (f" Nearest batch to its block date: {nearest['batch_no']} ({nearest['sku_code']}) at {nearest['cfa']}, "
+                          f"{nearest['days_to_block']} days away." if nearest and block_total == 0 else "")),
+            "nearest": nearest,
             "policy_clause": STOCK_EXPIRY_POLICY_CLAUSE,
             "evidence_rows": cite([b for b in batches_at_risk if _d(b["blocked_packs"]) > 0]),
             "value_inr": _money(block_total),

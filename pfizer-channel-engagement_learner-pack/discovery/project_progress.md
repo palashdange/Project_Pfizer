@@ -11,6 +11,12 @@
 - **Accuracy:** check set **19/19** (16 claims + 3 scheme cases; baseline 6/16); held-out 3/6, then 6/6 after fixes built against those cases. `pytest -q`: **116 passed**. Batch mode: ₹19.94 L/yr credited leakage the rules stop. Scheme check: ₹1.58 cr/yr above cap.
 - **Second user** (Kavita Rao, Supply Chain): stock view built (section 4).
 
+## Update — 2026-11-25 (numbers verified; SKU code fix)
+
+- **Checked:** every figure in `money_summary.md` recomputed with a fresh pandas script that shares no code with the app or `sizing.py`. Rejected credited claims ₹42.00 L/yr matched exactly. At risk did not: ₹90.41 L (app) vs ₹85.79 L (independent).
+- **Cause:** 143 claim rows write the SKU with a hyphen (PFL-1303); the app did not match them to the SKU master, so 68 valid claims went to a person for "value missing". Fixed in `agent/data.py` and `discovery/sizing.py` (SKU codes lose hyphens, as C&F codes already did), with a test.
+- **Result:** at risk ₹86.26 L/yr = independent ₹85.79 L + ₹0.47 L near repeats (our extra duplicate rule): exact. Routes 2,176 / 532 / 1,795. No `sizing.py` figure changed; stopped ₹19.94 L and rejected ₹42.00 L unchanged.
+
 ## Update — 2026-11-25 (held-out round 2)
 
 - **Changed:** 8 new held-out cases (`holdout2_`): 6 claims drawn at random with seed 20261125 (2 near expiry, 1 expired, 1 breakage, 1 short supply, 1 any), the FY27 Q1 scheme quarter and the 31-12-2024 stock snapshot. Labelled by hand from the raw CSVs with a script that imports no app code, and committed (`c1878b4`) before the app ran on them. The runner scores each round separately.

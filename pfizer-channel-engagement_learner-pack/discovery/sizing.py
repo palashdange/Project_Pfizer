@@ -45,7 +45,7 @@ EXPIRY_CLAIM_TYPES = {"NEAR EXPIRY", "EXPIRED"}
 
 
 def normalize_code(value: Any, *, cfa: bool = False) -> str:
-    """Normalize identifier whitespace/case; CFA identifiers also lose hyphens."""
+    """Normalize identifier whitespace/case; CFA and SKU identifiers also lose hyphens."""
     normalized = "" if value is None else str(value).strip().upper()
     return normalized.replace("-", "") if cfa else normalized
 
@@ -78,7 +78,8 @@ def _clean_file(path: Path) -> tuple[pd.DataFrame, int, int]:
             "original_invoice_ref",
         }:
             clean[column] = clean[column].map(normalize_code)
-        if column == "cnf_code":
+        if column in {"cnf_code", "sku_code"}:
+            # CF-E01/CFE01 and PFL-1303/PFL1303 are the same code (143 claim rows hyphenate the SKU).
             clean[column] = clean[column].map(lambda value: normalize_code(value, cfa=True))
         if "date" in column.lower():
             clean[column] = parse_mixed_dates(clean[column])

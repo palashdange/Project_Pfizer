@@ -45,3 +45,10 @@ def test_rows_keep_original_csv_source_row_after_deduplication():
     assert rows is not None
     assert rows[0]["source_row"] == 2
     assert rows[0]["source_file"] == "primary_sales.csv"
+
+
+def test_hyphenated_sku_in_claims_resolves_to_the_master_sku():
+    # CLM-2501-00206 writes PFL-1303; the SKU master has PFL1303 (PTS 84.7): 107 x 84.7 = 9062.9.
+    claim = data.get_claim("CLM-2501-00206")
+    assert claim["sku_code"] == "PFL1303"
+    assert data.get_sku(claim["sku_code"])["pts_inr"] == "84.7"

@@ -374,6 +374,15 @@
     </article>`;
   }
 
+  // Compact rupees for metric tiles: 1 crore = 100 lakh; the exact amount stays in the note below.
+  function formatCompactInr(value) {
+    const amount = Number(value);
+    if (!Number.isFinite(amount)) return escapeHtml(scalar(value));
+    if (Math.abs(amount) >= 1e7) return `₹${(amount / 1e7).toFixed(2)} cr`;
+    if (Math.abs(amount) >= 1e5) return `₹${(amount / 1e5).toFixed(2)} L`;
+    return formatInr(amount);
+  }
+
   function renderSchemeReview(item) {
     if (!item.found) {
       return `<article class="evidence-card"><h3>Scheme or quarter ${escapeHtml(item.target || "")} not found</h3>
@@ -390,11 +399,11 @@
       policy: check.policy_clause || "—",
     }));
     return `<article class="evidence-card scheme-review">
-      <h3>${escapeHtml(item.target)} · ${escapeHtml(item.quarter)} · circular ${escapeHtml((item.circulars || []).join(", "))}</h3>
+      <h3>${escapeHtml(item.target === item.quarter ? item.quarter : `${item.target} · ${item.quarter}`)} · circular ${escapeHtml((item.circulars || []).join(", "))}</h3>
       <div class="metric-grid">
         <div class="metric"><span>Free goods / primary sales (§4.4 cap 3%)</span><strong>${escapeHtml(cap.foc_pct)}%</strong><span>${formatInr(cap.foc_value_inr)} of ${formatInr(cap.sales_value_inr)}</span></div>
-        <div class="metric"><span>Above the cap</span><strong>${formatInr(cap.above_cap_inr)}</strong><span>Needs CFO approval (§4.3)</span></div>
-        <div class="metric"><span>Orders below 1.5× average (policy wording)</span><strong>${escapeHtml(elig.lines_below)} / ${escapeHtml(elig.lines_checked)}</strong><span>${formatInr(elig.free_value_below_inr)} free goods on them</span></div>
+        <div class="metric"><span>Above the cap</span><strong>${formatCompactInr(cap.above_cap_inr)}</strong><span>${formatInr(cap.above_cap_inr)}. Needs CFO approval (§4.3)</span></div>
+        <div class="metric"><span>Orders below 1.5× average (policy wording)</span><strong>${escapeHtml(elig.lines_below)} / ${escapeHtml(elig.lines_checked)}</strong><span>${formatCompactInr(elig.free_value_below_inr)} free goods on them</span></div>
         <div class="metric"><span>Same, non-scheme purchases only</span><strong>${escapeHtml(elig.lines_below_non_scheme_reading)}</strong><span>${formatInr(elig.free_value_below_non_scheme_reading_inr)}. Policy does not define which; ask the client.</span></div>
       </div>
       <h4>Scheme checks</h4>

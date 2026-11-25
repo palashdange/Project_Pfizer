@@ -31,6 +31,30 @@ CFA_VERIFICATION_WINDOW_WORKING_DAYS = 10  # CO-POL-014 v4.2 §5.6 p.4
 DUPLICATE_NEAR_QTY_TOLERANCE_PCT = 1.0
 DUPLICATE_NEAR_QTY_MIN_PACKS = 1
 
+# Quarter-end scheme register, CO-POL-014 v4.2 Annexure B pp.5-6. Each circular is valid from the
+# 22nd of the quarter's last month to that month's last day; the minimum order is 1.5 times the
+# stockist's average monthly purchase of the SKU over the previous three months (Annexure B p.5).
+SCHEME_VALID_FROM_DAY = 22  # Annexure B p.5
+SCHEME_MIN_ORDER_MULTIPLE = 1.5  # Annexure B p.5
+SCHEME_LOOKBACK_MONTHS = 3  # Annexure B p.5
+SCHEME_TIER_A_SKUS = (
+    "PFL1001", "PFL1002", "PFL1003", "PFL1101", "PFL1102",
+    "PFL1103", "PFL1105", "PFL1202", "PFL1301", "PFL1303",
+)  # SC/24/06, Annexure B p.5
+SCHEME_TIER_B_SKUS = ("PFL1004", "PFL1104", "PFL1201", "PFL1302", "PFL1401")  # SC/24/12, Annexure B p.5
+# Free packs per 10 invoiced, by scheme code: Tier A 10+1 to FY25 Q2, 10+2 from FY25 Q3; Tier B 10+1.
+SCHEME_REGISTER = {
+    "QS-FY25Q1-A": ("SC/24/06", 1), "QS-FY25Q2-A": ("SC/24/09", 1),
+    "QS-FY25Q3-A": ("SC/24/12", 2), "QS-FY25Q3-B": ("SC/24/12", 1),
+    "QS-FY25Q4-A": ("SC/25/03", 2), "QS-FY25Q4-B": ("SC/25/03", 1),
+    "QS-FY26Q1-A": ("SC/25/06", 2), "QS-FY26Q1-B": ("SC/25/06", 1),
+    "QS-FY26Q2-A": ("SC/25/09", 2), "QS-FY26Q2-B": ("SC/25/09", 1),
+    "QS-FY26Q3-A": ("SC/25/12", 2), "QS-FY26Q3-B": ("SC/25/12", 1),
+    "QS-FY26Q4-A": ("SC/26/03", 2), "QS-FY26Q4-B": ("SC/26/03", 1),
+    "QS-FY27Q1-A": ("SC/26/06", 2), "QS-FY27Q1-B": ("SC/26/06", 1),
+    "QS-FY27Q2-A": ("SC/26/09", 2), "QS-FY27Q2-B": ("SC/26/09", 1),
+}  # Annexure B pp.5-6
+
 # Clause labels shared by the graph's rule checks and their audit evidence.
 TRANSIT_CLAIM_POLICY_CLAUSE = "CO-POL-014 §5.2"
 EXPIRY_CLAIM_POLICY_CLAUSE = "CO-POL-014 §5.2"
@@ -40,3 +64,6 @@ DUPLICATE_CLAIM_POLICY_CLAUSE = "CO-POL-014 §5.6"
 CLAIM_VALUE_POLICY_CLAUSE = "CO-POL-014 §5.7"
 BATCH_EXPIRY_POLICY_CLAUSE = "CO-POL-014 §5.2"
 PASTED_FIELDS_POLICY_CLAUSE = "CO-POL-014 §5.3; §5.7"
+SCHEME_CAP_POLICY_CLAUSE = "CO-POL-014 §4.4"
+SCHEME_TERMS_POLICY_CLAUSE = "CO-POL-014 §4.2; Annexure B"
+SCHEME_STOCK_NORM_POLICY_CLAUSE = "CO-POL-014 §4.5"

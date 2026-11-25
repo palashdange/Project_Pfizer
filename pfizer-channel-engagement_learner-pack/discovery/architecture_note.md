@@ -61,10 +61,10 @@ flowchart LR
 | Provider down or key missing | Parse → `NEEDS_PERSON`; explain → code text, route kept | `test_graph.py` (2) |
 | Provider slow or stuck | Each call times out after **20 s**, retried **once** (`config.py`); then as the row above | `test_llm.py` (4) |
 | Pasted details conflict, unreadable, or invented by the model | `NEEDS_PERSON` with both values; invented values dropped | `test_graph.py` (3) |
-| Explanation adds a number or approval / "has been done" wording | Code fallback text | `test_graph.py` (2) |
+| Explanation adds or changes a number, or uses approval / "has been done" wording | Code fallback text, labelled "written by code" on the page | `test_graph.py` (4) |
 | Missing batch, sales or invoice row; bad date or quantity; value ≠ qty × PTS | `missing`/`fail` → `NEEDS_PERSON`, never a guess | `test_rules.py`; check set `missing_batch_01`, `blank_invoice_01/02` |
 
-`pytest -q`: **130 passed**; Node tests **26/26** (`test_frontend.js` and `test_evidence.js`). The tests cover every boundary in `rules.py` (day 90, day 7, the 60% shelf-life threshold, the 3% cap, PTS value). `agent/tools.py` (earlier tool loop) is unit-tested but **not wired into the graph**.
+`pytest -q`: **139 passed**; Node tests **32/32** (page, evidence and result view). The tests cover every boundary in `rules.py` (day 90, day 7, the 60% shelf-life threshold, the 3% cap, PTS value). `agent/tools.py` (earlier tool loop) is unit-tested but **not wired into the graph**.
 
 ## 5. Accuracy
 

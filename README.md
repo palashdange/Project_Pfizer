@@ -18,6 +18,12 @@ A pilot for the **Commercial Finance claims team** in a fictional pharma trade c
 
 Details, methods and source rows: [Discovery note](pfizer-channel-engagement_learner-pack/discovery/Discovery_note.md).
 
+## Using the page
+
+- **Four sections, one per job.** The cards at the top say who each section is for, how often, and the question it answers: claim review, batch review, scheme check, stock risk.
+- **Claim search.** Type a claim number, stockist, city, SKU or batch; the dropdown lists matching claims (pending first, with stockist, type, date, product, batch, status and ₹). Pick one to review it. A pasted email or claim details still goes through the AI parser. Code only: `GET /api/claims/search`.
+- **Each result** shows the answer, *why* (each check that did not pass, with its rule), the *next step* (written by code for each outcome), who decides, and the explanation labelled **written by AI, then checked by code** or **written by code** when the AI's text failed the guard. Check tables use plain names and coloured results; source rows are one tap away.
+
 ## Users
 
 1. **Claims executive, Commercial Finance** (owner: Neha Bansal, Controller). Each week: credit, reject, or send each claim in the register to a person.

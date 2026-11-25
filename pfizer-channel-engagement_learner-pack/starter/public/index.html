@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Project Sankalp pilot</title>
-<link rel="stylesheet" href="/style.css?v=12">
+<link rel="stylesheet" href="/style.css?v=13">
 </head>
 <body>
 <main>
@@ -18,7 +18,7 @@
   </header>
 
   <section class="input-card" aria-labelledby="question-heading">
-    <h2 id="question-heading">What would you like to review?</h2>
+    <h2 id="question-heading">1. Claim review · Commercial Finance claims triage</h2>
     <p class="hint">Enter a claim number, paste claim details, or inspect an email ID. The copilot does not issue credit notes.</p>
     <section class="scenario-replay" aria-labelledby="scenario-heading">
       <div class="scenario-heading">
@@ -39,7 +39,7 @@
         </article>
       </div>
     </section>
-    <h3>1. Commercial Finance · claims triage</h3>
+    <h3>Try a claim</h3>
     <div class="quick-actions" aria-label="Commercial Finance claims checks">
       <button type="button" class="quick-action" data-question="Review expiry claim CLM-2605-04488 and show its evidence.">Review a claim <span>Claim, batch, invoice, and prior-credit evidence</span></button>
       <button type="button" class="quick-action" data-question="Review expiry claim CLM-2404-04177 and show its evidence.">Review a complete claim <span>All checks pass · sample case</span></button>
@@ -50,25 +50,25 @@
       <input id="q" placeholder="For example: Review claim CLM-2605-04488 or inspect EML-017." autocomplete="off">
       <button class="ask-button">Ask</button>
     </form>
+    <p id="status" class="hint status" role="status" aria-live="polite"></p>
+    <div id="out" class="result-area" hidden>
+      <div class="answer-card">
+        <div class="answer-heading">
+          <h3>Result</h3>
+          <span id="decision-badge" class="decision-badge" hidden></span>
+        </div>
+        <p id="decision-owner" class="decision-owner" hidden></p>
+        <p id="answer"></p>
+      </div>
+      <h3>Evidence from the data</h3>
+      <div id="evidence" class="evidence-list"></div>
+      <details id="raw-details" class="raw-details">
+        <summary>View raw evidence</summary>
+        <pre id="raw-evidence"></pre>
+      </details>
+    </div>
   </section>
 
-  <p id="status" class="hint status" role="status" aria-live="polite"></p>
-  <section id="out" hidden>
-    <div class="answer-card">
-      <div class="answer-heading">
-        <h2>Result</h2>
-        <span id="decision-badge" class="decision-badge" hidden></span>
-      </div>
-      <p id="decision-owner" class="decision-owner" hidden></p>
-      <p id="answer"></p>
-    </div>
-    <h2>Evidence from the data</h2>
-    <div id="evidence" class="evidence-list"></div>
-    <details class="raw-details">
-      <summary>View raw evidence</summary>
-      <pre id="raw-evidence"></pre>
-    </details>
-  </section>
   <section class="input-card batch-card" aria-labelledby="batch-heading">
     <h2 id="batch-heading">2. Batch review · what the pilot would have caught</h2>
     <p class="hint">Runs every claim in the register (or one month) through the same checks, in code, with no model calls. Rupees are totalled in Python from <code>expiry_claims.csv</code>.</p>
@@ -99,11 +99,28 @@
       </select>
       <button type="button" id="scheme-run">Check schemes</button>
     </div>
+    <p id="scheme-status" class="hint status" role="status" aria-live="polite"></p>
+    <div id="scheme-out" class="result-area" hidden>
+      <div class="answer-card">
+        <div class="answer-heading">
+          <h3>Result</h3>
+          <span id="scheme-decision-badge" class="decision-badge" hidden></span>
+        </div>
+        <p id="scheme-decision-owner" class="decision-owner" hidden></p>
+        <p id="scheme-answer"></p>
+      </div>
+      <h3>Evidence from the data</h3>
+      <div id="scheme-evidence" class="evidence-list"></div>
+      <details id="scheme-raw-details" class="raw-details">
+        <summary>View raw evidence</summary>
+        <pre id="scheme-raw-evidence"></pre>
+      </details>
+    </div>
   </section>
 </main>
-<script src="/evidence.js?v=15"></script>
-<script src="/progress.js?v=6"></script>
-<script src="/app.js?v=10"></script>
+<script src="/evidence.js?v=16"></script>
+<script src="/progress.js?v=7"></script>
+<script src="/app.js?v=11"></script>
 <script src="/batch.js?v=2"></script>
 </body>
 </html>

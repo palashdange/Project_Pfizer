@@ -13,12 +13,20 @@ test("weekly review page exposes read-only status and supported checks", () => {
   assert.match(html, /Read-only decision support/);
   assert.match(html, /No ERP\/WMS write-back/);
   assert.match(html, /Human review required/);
-  assert.match(html, /evidence\.js\?v=15/);
-  assert.match(html, /app\.js\?v=10/);
+  assert.match(html, /evidence\.js\?v=16/);
+  assert.match(html, /app\.js\?v=11/);
   assert.match(html, /Review a claim/);
   assert.match(html, /Inspect a claim email/);
   assert.match(html, /Tuesday claims review · scenario replay/);
-  assert.match(html, /1\. Commercial Finance · claims triage/);
+  assert.match(html, /1\. Claim review · Commercial Finance claims triage/);
+  // Each section shows its result inside its own card, directly below its controls.
+  const claimCard = html.slice(html.indexOf('aria-labelledby="question-heading"'), html.indexOf('aria-labelledby="batch-heading"'));
+  assert.match(claimCard, /id="out"/);
+  const schemeCard = html.slice(html.indexOf('aria-labelledby="scheme-heading"'));
+  assert.match(schemeCard, /id="scheme-out"/);
+  assert.match(schemeCard, /id="scheme-decision-badge"/);
+  const batchCard = html.slice(html.indexOf('aria-labelledby="batch-heading"'), html.indexOf('aria-labelledby="scheme-heading"'));
+  assert.match(batchCard, /id="batch-out"/);
   assert.match(html, /not a live inbox or pending-claims queue/);
   assert.match(html, /expiry_claims\.csv rows 3269 and 3596/);
   assert.match(html, /claim_emails\.csv row 28/);
@@ -352,6 +360,8 @@ test("scheme review shows cap, eligibility range, cited checks, and who decides"
   });
   assert.match(html, /4\.95%/);
   assert.match(html, /399 \/ 1266/);
+  assert.match(html, /₹1\.10 cr/);
+  assert.doesNotMatch(html, /FY25 Q3 · FY25 Q3/);
   assert.match(html, /ask the client/);
   assert.match(html, /primary_sales\.csv:12345/);
   assert.match(html, /§4\.5/);

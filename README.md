@@ -59,8 +59,9 @@ A hand-checked [check set](pfizer-channel-engagement_learner-pack/starter/checks
 | With the scheme check | **19/19** |
 | With the stock view and free-text case (current) | **22/22** |
 | Held-out cases, labelled after the build | 3/6 at first; 6/6 after two fixes built against them |
+| **Held-out round 2:** 8 cases drawn at random, labelled before running | **8/8** |
 
-The first held-out run exposed two gaps (pasted details not compared, pending repeats missed). Both are fixed, so the held-out set is no longer unseen; see the [architecture note](pfizer-channel-engagement_learner-pack/discovery/architecture_note.md#5-accuracy).
+The first held-out run exposed two gaps (pasted details not compared, pending repeats missed). Both are fixed, so round 1 is no longer unseen. Round 2 (6 random claims, 1 scheme quarter, 1 stock snapshot) was labelled by hand and committed before the app ran on it; see the [architecture note](pfizer-channel-engagement_learner-pack/discovery/architecture_note.md#5-accuracy).
 
 ## Scheme check: quarter-end schemes (problem 1)
 

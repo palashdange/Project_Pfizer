@@ -1,6 +1,6 @@
 # Project Sankalp: architecture note
 
-**As built · checked against `starter/agent/graph.py` on 24 November 2026 · Fictional training case**
+**As built · checked against `starter/agent/graph.py` and the test run on 25 November 2026 · Fictional training case.** Terms: C&F = carrying and forwarding agent (regional warehouse); PTS = price to stockist; FEFO = first-expiry-first-out picking.
 
 ## 1. User, decision, and the split
 
@@ -9,19 +9,20 @@
 ## 2. Graph
 
 ```mermaid
-flowchart TD
+%%{init: {'flowchart': {'nodeSpacing': 8, 'rankSpacing': 30}}}%%
+flowchart LR
     S([START]) --> P[parse_input]
-    P -->|claim ID found| L[lookup]
-    P -->|no single claim| E[explain]
-    P -->|quarter or scheme code| SR[scheme_review §4.4, Annex B]
-    P -->|stock review| ST[stock_review §7.1, C&F §2.2]
-    SR & ST -->|not found| X
-    SR & ST --> E
-    L -->|claim not in register| X([END · NOT_FOUND])
+    P -->|quarter or scheme code| SR[scheme_review]
+    P -->|stock review| ST[stock_review]
+    P -->|no claim found| E
+    P -->|claim ID| L[lookup]
+    L -->|not in register| X([END: NOT_FOUND])
     L --> D[dispatch_checks]
-    D --> C1[check_window §5.2] & C2[check_quantity §5.5] & C3[check_duplicate §5.6] & C4[check_invoice_ref §5.4] & C5[check_batch_expiry] & C6[check_value §5.7] & C7[check_pasted_fields §5.3]
+    D --> C1[window §5.2] & C2[quantity §5.5] & C3[duplicate §5.6] & C4[invoice_ref §5.4] & C5[batch_expiry §5.2] & C6[value §5.7] & C7[pasted_fields §5.3]
     C1 & C2 & C3 & C4 & C5 & C6 & C7 --> DEC[decide]
-    DEC --> E --> Z([END])
+    DEC --> E[explain]
+    SR & ST --> E
+    E --> Z([END])
 ```
 
 | Node | Code or model | Why | File |
@@ -48,24 +49,22 @@ flowchart TD
 
 **Decide rules, in order:** (1) any `fail` on window, duplicate or quantity → **REJECT**; (2) the input was an email (`EML-`) → **NEEDS_PERSON**, because correspondence is untrusted; (3) any other `fail`, `review` or `missing` → **NEEDS_PERSON**; (4) otherwise → **RECOMMEND_CREDIT**. If the claim isn't in the register → **NOT_FOUND**, with no model call.
 
-**Batch mode** (`POST /api/batch`): a second compiled graph runs `lookup → checks → decide` with no model over all 4,503 claims (≈25–33 s, cached) or one month. Routes: 2,176 recommend credit, 532 reject, 1,795 needs a person. Per year, already credited: **₹19.94 L leakage the rules stop** (whole credit for §5.2/§5.6 failures, excess packs only for §5.5; reconciles to the discovery note's ₹20.25 L), ₹42.00 L whole value of rejected claims, **₹86.26 L at risk** (sent to a person; not counted as saved), plus ₹6.58 L of pending claims it would block.
-
-**Scheme check** (all 10 quarters, per year): free goods above the 3% cap **₹1.58 cr** (matches `sizing.py`); free goods on orders below the 1.5× minimum **₹50.2 L–₹2.63 cr**. The range comes from two readings of "average monthly purchase" (all purchases, the policy wording, is the upper end); the client must confirm. Window and SKU list: no breaches; free ratio: 1–2 lines a quarter. **Stock** (30 Sep 2026): ₹2.06 cr will ship below the 60% norm (stockists may refuse; not a write-off), ₹1.22 cr of it at CF-E01 Kolkata; write-off risk ₹0; CF-N02 Lucknow out of stock on 23 of 36 SKUs; CF-E01 skipped older stock on 82.9% of dispatches vs 28–35% elsewhere (a signal, after its Feb 2026 WMS change).
+**Batch mode** (`POST /api/batch`): a second compiled graph runs `lookup → checks → decide` with no model over all 4,503 claims (≈25–33 s) or one month: 2,176 recommend credit, 532 reject, 1,795 needs a person. Per year: **₹19.94 L credited leakage the rules stop** (reconciles to the discovery note's ₹20.25 L) and **₹86.26 L at risk** (sent to a person; not counted as saved). **Scheme check:** ₹1.58 cr a year above the 3% cap; ₹50.2 L–₹2.63 cr on orders below the 1.5× minimum (two readings of "average monthly purchase"). **Stock** (30 Sep 2026): ₹2.06 cr will ship below the 60% norm, ₹1.22 cr at Kolkata. Every figure, method and source: [money summary](money_summary.md).
 
 ## 4. Failure handling
 
-| Failure | Response | Test (in `tests/`) |
+| Failure | Response | Tests (`tests/`) |
 |---|---|---|
-| Unknown claim, scheme, quarter or snapshot | `NOT_FOUND`, 0 model calls | `test_ask_not_found_does_not_call_model` (+2) |
-| Email says skip checks (EML-017) | Body tagged untrusted; `NEEDS_PERSON`; "APPROVED" text dropped | `test_ask_keeps_eml_017_untrusted_and_never_approves` (+1) |
-| Free text, no claim number | `NEEDS_PERSON` | `test_unidentifiable_free_text_is_routed_to_a_person` |
-| Provider down or key missing | Parse → `NEEDS_PERSON`; explain → code text, route kept | `test_provider_failure_during_parse_routes_to_a_person` (+1) |
-| Pasted details conflict, can't be read, or the model invents a value | `NEEDS_PERSON` with both values; invented values dropped | `test_pasted_value_that_differs_from_register_goes_to_a_person` (+2) |
-| Explanation adds a number or "has been done" wording | Code fallback text | `test_model_explanation_cannot_add_numbers_not_present_in_checks` (+1) |
-| Missing batch, sales or invoice row; bad date or quantity; value ≠ qty × PTS | `missing`/`fail` → `NEEDS_PERSON`, never a guess | check set `missing_batch_01`, `blank_invoice_01/02`; `test_rules.py` |
-| Provider hangs | **Gap:** no request timeout; only the Vercel function limit | none yet |
+| Unknown claim, scheme, quarter or snapshot | `NOT_FOUND`, 0 model calls | `test_api.py`, `test_graph.py` (3) |
+| Email says skip checks (EML-017) | Body tagged untrusted; `NEEDS_PERSON`; "APPROVED" text dropped | `test_api.py` (2) |
+| Free text with no claim number | `NEEDS_PERSON` | `test_graph.py` (1) |
+| Provider down or key missing | Parse → `NEEDS_PERSON`; explain → code text, route kept | `test_graph.py` (2) |
+| Provider slow or stuck | Each call times out after **20 s**, retried **once** (`config.py`); then as the row above | `test_llm.py` (4) |
+| Pasted details conflict, unreadable, or invented by the model | `NEEDS_PERSON` with both values; invented values dropped | `test_graph.py` (3) |
+| Explanation adds a number or approval / "has been done" wording | Code fallback text | `test_graph.py` (2) |
+| Missing batch, sales or invoice row; bad date or quantity; value ≠ qty × PTS | `missing`/`fail` → `NEEDS_PERSON`, never a guess | `test_rules.py`; check set `missing_batch_01`, `blank_invoice_01/02` |
 
-`pytest -q`: **123 passed**; Node tests **23/23** (`test_frontend.js` and `test_evidence.js`). The tests cover every boundary in `rules.py` (day 90, day 7, the 60% shelf-life threshold, the 3% cap, PTS value). `agent/tools.py` (earlier tool loop) is unit-tested but **not wired into the graph**.
+`pytest -q`: **130 passed**; Node tests **26/26** (`test_frontend.js` and `test_evidence.js`). The tests cover every boundary in `rules.py` (day 90, day 7, the 60% shelf-life threshold, the 3% cap, PTS value). `agent/tools.py` (earlier tool loop) is unit-tested but **not wired into the graph**.
 
 ## 5. Accuracy
 
@@ -76,6 +75,6 @@ flowchart TD
 
 `python checks/run_checks.py` scores held-out (`holdout_`) cases separately; the live URL matches. \*Round 1 (3/6) exposed two gaps, pasted details and pending repeats; both were fixed against those cases, so 6/6 is not an unseen-data score. **Round 2** is the honest one: 6 claims drawn at random (seed 20261125, stratified by type), 1 scheme quarter and 1 stock snapshot, labelled by hand from the raw CSVs, committed before the app ran (`c1878b4`); FY27 Q1 was seen in development.
 
-## 6. Speed and cost (24 Nov 2026, `openai/gpt-4o-mini` via OpenRouter; live on Vercel `bom1` Mumbai, private repo, owner merges)
+## 6. Speed and cost (`openai/gpt-4o-mini` via OpenRouter; Vercel `bom1`, Mumbai)
 
-**Cost per run:** a claim ID makes 1 model call (CLM-2404-04177: 825 tokens in / 56 out, $0.000157); free text with no ID makes 2 (520 / 96, $0.000136); scheme and stock reviews make 1. Means of 2 runs at OpenRouter list prices ($0.15/M in, $0.60/M out). **~4,000 claims/yr × ~$0.00016 ≈ $0.65/yr** (no hosting). Live: 2–2.7 s a review, 4–6 s for scheme or stock.
+**Cost per run:** a claim ID makes 1 model call (CLM-2404-04177: 825 tokens in / 56 out, $0.000157); free text with no ID makes 2 (520 / 96, $0.000136); scheme and stock reviews make 1. Means of 2 runs at OpenRouter list prices ($0.15/M in, $0.60/M out). **~4,000 claims/yr × ~$0.00016 ≈ $0.65/yr** (no hosting). Live: 2–2.7 s a review, 4–6 s for scheme or stock. Worst case with a stuck provider: about 40 s per model call (20 s, then one retry) before the code fallback.

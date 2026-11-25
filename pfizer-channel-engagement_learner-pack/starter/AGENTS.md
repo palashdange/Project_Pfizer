@@ -30,4 +30,4 @@ python checks/run_checks.py
 uvicorn app:app --reload
 
 ## Current task
-Fresh held-out set (5–6 claims, 1 scheme quarter, 1 stock date), labelled by hand before running and scored separately. Then a 20 s model timeout with one retry and a test. `/demos` holds the one-per-outcome cases; a test ties each to its check-set row, so add new demo cases to the check set first.
+Feature work is done: claims, batch, scheme check, stock view, held-out round 2 and the 20 s model timeout with one retry (`config.py`, `tests/test_llm.py`). Remaining work is the deck. `/demos` holds the one-per-outcome cases; a test ties each to its check-set row, so add new demo cases to the check set first.

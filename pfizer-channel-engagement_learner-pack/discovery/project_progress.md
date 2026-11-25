@@ -1,6 +1,6 @@
 # Project Sankalp progress log
 
-**Last updated:** 24 November 2026  
+**Last updated:** 25 November 2026  
 **Project:** Fictional Pfizer domestic-channel training case  
 **Purpose:** Keep a dated, evidence-based record of what has been completed, what is in progress, and what remains. This is a project work log, not a claim of real Pfizer validation or realized savings.
 
@@ -8,8 +8,14 @@
 
 - **Deployed:** https://project-pfizer.vercel.app (Vercel Hobby, auto-deploys from `master`). Region `bom1` confirmed live. The repo is private and still deploys (owner merges via PR, merge commit).
 - **First user: Commercial Finance claims executive** (owner Neha Bansal). The graph routes each claim to recommend credit, reject, needs a person, or not found. Code decides; the model only parses free text and explains.
-- **Accuracy:** check set **19/19** (16 claims + 3 scheme cases; baseline 6/16); held-out 3/6, then 6/6 after fixes built against those cases. `pytest -q`: **116 passed**. Batch mode: ₹19.94 L/yr credited leakage the rules stop. Scheme check: ₹1.58 cr/yr above cap.
+- **Accuracy:** check set **22/22** (16 claims + 3 scheme, 2 stock, 1 free text; baseline 6/16); held-out round 1 3/6, then 6/6 after fixes built against those cases; held-out round 2 **8/8** (labelled before running). `pytest -q`: **130 passed**; Node tests 26/26. Batch mode: ₹19.94 L/yr credited leakage the rules stop. Scheme check: ₹1.58 cr/yr above cap.
 - **Second user** (Kavita Rao, Supply Chain): stock view built (section 4).
+
+## Update — 2026-11-25 (model timeout and architecture note)
+
+- **Changed:** every model call now times out after 20 s and is retried once (`config.py`, `agent/llm.py`); after that the existing failure path applies (parse → needs a person, explain → code text). Four new tests in `tests/test_llm.py` use a fake provider that times out. Architecture note updated: timeout row, test counts, readable graph, terms defined; 2 pages with the diagram drawn. README updated to describe the scheme and stock views as built.
+- **Evidence/checks:** `pytest -q` 130 passed; Node tests 26/26; live model call through the new client works.
+- **Open items:** deck; PDFs of the architecture note and research note.
 
 ## Update — 2026-11-25 (discovery note rewritten for the steering group)
 

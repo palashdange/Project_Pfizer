@@ -286,3 +286,46 @@ def test_claim_id_takes_priority_over_a_quarter_mention(monkeypatch):
 
     assert result["route"] == "RECOMMEND_CREDIT"
     assert "cap" not in result["checks"] and "window" in result["checks"]
+
+
+def test_stock_review_latest_snapshot_flags_kolkata_and_lucknow(monkeypatch):
+    monkeypatch.setattr(graph_module, "get_llm", lambda: ExplainOnlyLLM())
+
+    result = graph_module.run_question("Stock review")
+
+    assert result["route"] == "STOCK_NEEDS_ACTION"
+    evidence = result["evidence"][0]
+    assert evidence["snapshot"] == "30-09-2026"
+    by_cfa = {row["cfa"]: row for row in evidence["by_cfa"]}
+    assert by_cfa["CF-N02"]["out_of_stock"] == 23  # Lucknow: 23 of 36 SKUs empty
+    assert result["checks"]["fefo_signal"]["flagged"] == ["CF-E01"]
+    assert result["checks"]["expiry_block"]["status"] == "pass"  # no write-off risk at this snapshot
+
+
+def test_stock_batch_past_its_60_percent_point_is_counted_in_full():
+    # G2550105 (PFL1501, CF-E01): made 15-07-2025, expires 30-06-2028 = 1,081 days of life.
+    # 60% must remain at dispatch, so it had to ship by 20-09-2026, before the 30-09-2026 snapshot.
+    from agent.stock import review_stock
+
+    result = review_stock("30-09-2026")
+    rows = [b for b in result["top_batches"] if b["batch_no"] == "G2550105" and b["on_hand_packs"] == "13987"]
+    assert rows and rows[0]["packs_at_risk"] == "13987" and rows[0]["blocked_packs"] == "0"
+    assert rows[0]["source"] == "cnf_stock_snapshot.csv:4783"
+
+
+def test_stock_review_before_monthly_snapshots_marks_fefo_unavailable(monkeypatch):
+    monkeypatch.setattr(graph_module, "get_llm", lambda: ExplainOnlyLLM())
+
+    result = graph_module.run_question("stock risk 31-12-2025")
+
+    assert result["checks"]["fefo_signal"]["status"] == "missing"
+    assert result["checks"]["expiry_block"]["status"] == "fail"
+
+
+def test_unknown_stock_snapshot_is_not_found_without_a_model_call(monkeypatch):
+    monkeypatch.setattr(graph_module, "get_llm", lambda: ExplainOnlyLLM())
+
+    result = graph_module.run_question("Expiry check 15-09-2026")
+
+    assert result["route"] == "NOT_FOUND" and result["model_calls"] == 0
+    assert "30-09-2026" in result["evidence"][0]["available_snapshots"]

@@ -104,4 +104,9 @@ Each entry records the selected direction, the main alternative, the rationale, 
 **Why we chose this:** The policy does not define it, and the choice moves free goods on ineligible orders from ₹50.2 L to ₹2.63 cr a year. Using the wording keeps us faithful to the document, showing both keeps us honest, and the question goes to the client. Months before the extract count as zero, so a pass that relies on them is flagged as uncertain.
 **Evidence:** Annexure B p.5; discovery/Discovery_note.md open question 5; starter/agent/schemes.py.
 
+**21. Decision:** Build a stock view for Kavita Rao (Head of Supply Chain): expiry risk, cover and a FEFO signal per C&F, at a month-end snapshot.
+**Options considered:** recommendation only vs. allocation-drift table vs. stock view vs. return-to-CDC suggestions.
+**Why we chose this:** Her ask is "not another forecast. I need to know where the stock is going to expire before it does" (interviews p. 2). The snapshot has stock by batch with a rolling outward rate, so code can apply §7.1–7.2 and the C&F §2.2 norm without forecasting. The 60% shelf-life figure is labelled "stockists may refuse", not a write-off; write-off risk is the 60-day block. The FEFO signal is a pilot threshold (2× the other C&Fs' median) and a prompt to check the WMS, not proof. Transfers are not suggested: they need her approval and 10–14 days (§2.5).
+**Evidence:** CO-POL-014 §7.1–7.2 p.4; C&F agreement clauses 4.3, 6.3, Schedule 2 §2.2–2.5; cnf_stock_snapshot.csv; starter/agent/stock.py; tests/test_rules.py, tests/test_graph.py; check set stock_latest_01.
+
 PDF page references checked against the source PDFs on 24 Nov 2026. Code, Markdown, and CSV references checked directly.

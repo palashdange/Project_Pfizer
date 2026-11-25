@@ -25,12 +25,16 @@ ALLOWED_EXPECTED_ROUTES = {
     "NOT_FOUND",
     "SCHEME_WITHIN_POLICY",
     "SCHEME_NEEDS_REVIEW",
+    "STOCK_OK",
+    "STOCK_NEEDS_ACTION",
 }
 
 
 def question_for(case_input: str) -> str:
     """Format claim and email IDs as natural questions accepted by run_question."""
     value = case_input.strip()
+    if value.upper().startswith("STOCK"):
+        return f"{value} for every C&F."
     if value.upper().startswith(("QS-", "FY")):
         return f"Review quarter-end scheme {value} against the policy."
     if value.upper().startswith("EML-"):

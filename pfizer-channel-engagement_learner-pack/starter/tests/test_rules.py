@@ -14,6 +14,9 @@ from config import (
 )
 from agent.rules import (
     classify_prior_claim,
+    dispatch_deadlines,
+    fefo_packs_at_risk,
+    months_of_cover,
     expected_free_packs,
     fiscal_quarter_of,
     parse_quarter,
@@ -299,3 +302,30 @@ def test_scheme_order_eligibility_at_and_around_one_and_a_half_times():
     # A month with no purchase counts as zero in the 3-month average.
     assert scheme_order_eligibility(Decimal("150"), [Decimal("0"), Decimal("0"), Decimal("300")])["status"] == "eligible"
     assert scheme_order_eligibility(Decimal("100"), [Decimal("0"), Decimal("0"), Decimal("300")])["status"] == "below_threshold"
+
+
+def test_dispatch_deadlines_are_60_days_and_60_percent_of_shelf_life():
+    deadlines = dispatch_deadlines(date(2027, 6, 30), 730)
+    assert deadlines["block"] == date(2027, 5, 1)  # 60 days before expiry (§7.1)
+    assert deadlines["short_shelf_life"] == date(2026, 4, 18)  # 438 days = 60% of 730 (§7.1)
+    with pytest.raises(ValueError):
+        dispatch_deadlines(date(2027, 6, 30), 0)
+
+
+def test_fefo_at_risk_counts_only_what_cannot_ship_and_skips_dead_stock():
+    as_of = date(2026, 9, 30)
+    batches = [(date(2027, 6, 30), Decimal("1000")), (date(2028, 6, 30), Decimal("500"))]
+    deadlines = [dispatch_deadlines(expiry, 730) for expiry, _ in batches]
+    # 100 packs/month: 213 days to the first block date ships ~700 of 1,000; the rest is blocked.
+    assert fefo_packs_at_risk(batches, Decimal("100"), as_of, "block", deadlines) == [Decimal("300"), Decimal("0")]
+    # First batch is already below 60% shelf life; it does not hold up the second batch.
+    assert fefo_packs_at_risk(batches, Decimal("100"), as_of, "short_shelf_life", deadlines) == [Decimal("1000"), Decimal("0")]
+    # No outward movement: everything is at risk.
+    assert fefo_packs_at_risk(batches, Decimal("0"), as_of, "block", deadlines) == [Decimal("1000"), Decimal("500")]
+
+
+def test_months_of_cover_against_two_month_top_up_norm():
+    assert months_of_cover(Decimal("200"), Decimal("100"))["status"] == "within_norm"  # exactly 2 months
+    assert months_of_cover(Decimal("201"), Decimal("100"))["status"] == "above_norm"
+    assert months_of_cover(Decimal("0"), Decimal("100"))["status"] == "out_of_stock"
+    assert months_of_cover(Decimal("50"), Decimal("0"))["status"] == "no_outward"

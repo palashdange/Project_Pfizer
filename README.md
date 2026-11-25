@@ -59,13 +59,14 @@ Full design: [Architecture note](pfizer-channel-engagement_learner-pack/discover
 
 ## Accuracy
 
-A hand-checked [check set](pfizer-channel-engagement_learner-pack/starter/checks/check_set.csv) of 16 real claims and emails, plus 3 scheme cases:
+A hand-checked [check set](pfizer-channel-engagement_learner-pack/starter/checks/check_set.csv) of 16 real claims and emails, plus 3 scheme and 2 stock cases:
 
 | Version | Score |
 |---|---|
 | Starter tool loop (baseline) | 6/16 |
 | Claims workflow graph | **16/16** |
-| With the scheme check (current) | **19/19** |
+| With the scheme check | **19/19** |
+| With the stock view (current) | **21/21** |
 | Held-out cases, labelled after the build | 3/6 at first; 6/6 after two fixes built against them |
 
 The first held-out run exposed two gaps (pasted details not compared, pending repeats missed). Both are fixed, so the held-out set is no longer unseen; see the [architecture note](pfizer-channel-engagement_learner-pack/discovery/architecture_note.md#5-accuracy).
@@ -73,6 +74,10 @@ The first held-out run exposed two gaps (pasted details not compared, pending re
 ## Scheme check: quarter-end schemes (problem 1)
 
 Section 3 of the page, or ask "Review quarter-end scheme FY25 Q3". Code checks a quarter or scheme code (e.g. `QS-FY27Q1-A`) against the §4.4 3% free-goods cap and Annexure B: 1.5× minimum order, validity window, SKU list, free ratio. §4.5 stock norm is shown as not checkable (no secondary sales). Per year over 10 quarters: **₹1.58 cr above the cap**, and **₹50.2 L–₹2.63 cr** of free goods on orders below the 1.5× minimum. The range depends on how the policy's "average monthly purchase" is read; that's an open question for the client. Commercial Finance and the National Sales Manager decide.
+
+## Stock and expiry risk: second user (problem 2)
+
+Section 4 of the page, or ask "Stock review" (latest month-end) or "Stock review 31-12-2025". For Kavita Rao, Head of Supply Chain: with first-expiry-first-out picking at each C&F's current outward rate, code finds stock that will ship below the 60% shelf-life norm or hit the 60-day block (CO-POL-014 §7.1–7.2); out-of-stock lines; cover above the 2-month top-up norm (C&F agreement §2.2); and each C&F's share of dispatches that skipped older stock. At 30 Sep 2026: **₹2.06 cr below the norm** (₹1.22 cr at Kolkata; not a write-off), **Lucknow out of stock on 23 of 36 SKUs**, and **Kolkata skipped older stock on 83% of dispatches** against 28–35% elsewhere after its Feb 2026 WMS change, a signal to check its picking rules.
 
 ## Batch mode: what the pilot would have caught
 

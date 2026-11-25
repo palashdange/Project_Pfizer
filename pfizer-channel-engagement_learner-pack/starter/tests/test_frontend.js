@@ -13,8 +13,8 @@ test("weekly review page exposes read-only status and supported checks", () => {
   assert.match(html, /Read-only decision support/);
   assert.match(html, /No ERP\/WMS write-back/);
   assert.match(html, /Human review required/);
-  assert.match(html, /evidence\.js\?v=16/);
-  assert.match(html, /app\.js\?v=11/);
+  assert.match(html, /evidence\.js\?v=18/);
+  assert.match(html, /app\.js\?v=12/);
   assert.match(html, /Review a claim/);
   assert.match(html, /Inspect a claim email/);
   assert.match(html, /Tuesday claims review · scenario replay/);
@@ -366,7 +366,7 @@ test("scheme review shows cap, eligibility range, cited checks, and who decides"
   assert.match(html, /primary_sales\.csv:12345/);
   assert.match(html, /§4\.5/);
   assert.deepEqual(resultBadge([], "SCHEME_NEEDS_REVIEW"), { label: "SCHEME NEEDS REVIEW", tone: "reject" });
-  assert.match(decisionOwner("SCHEME_NEEDS_REVIEW"), /Rohan Mehta/);
+  assert.match(decisionOwner("SCHEME_NEEDS_REVIEW"), /National Sales Manager, Arjun Sethi; the CFO, Rohan Mehta/);
   assert.match(renderEvidence({ result_type: "scheme_review", found: false, target: "FY23 Q1", available_quarters: ["FY25 Q1"] }), /not found/);
 });
 
@@ -375,4 +375,28 @@ test("scheme answers use the model explanation, never the old batch template", (
   assert.equal(answerSummary("Free goods were above the cap.", [item]), "Free goods were above the cap.");
   assert.match(answerSummary("", [item]), /FY25 Q3 was checked/);
   assert.match(answerSummary("", [{ result_type: "scheme_review", found: false, target: "FY23 Q1" }]), /not in the scheme register/);
+});
+
+test("stock review shows risk tiles, per-C&F table, cited batches, and Kavita Rao as decider", () => {
+  const html = renderEvidence({
+    result_type: "stock_review", found: true, snapshot: "30-09-2026", route: "STOCK_NEEDS_ACTION",
+    checks: {
+      short_shelf_life: { status: "fail", reason: "below norm", policy_clause: "CO-POL-014 §7.1-7.2", value_inr: "20597918.30", evidence_rows: [{ file: "cnf_stock_snapshot.csv", source_row: 4783 }] },
+      expiry_block: { status: "pass", reason: "none", policy_clause: "CO-POL-014 §7.1-7.2", value_inr: "0.00", evidence_rows: [] },
+      out_of_stock: { status: "fail", reason: "58 of 216", policy_clause: "C&F agreement Schedule 2 §2.2", lines: 58, evidence_rows: [] },
+      above_norm: { status: "fail", reason: "124 of 216", policy_clause: "C&F agreement Schedule 2 §2.2", lines: 124, evidence_rows: [] },
+    },
+    by_cfa: [{ cfa: "CF-N02", city: "Lucknow", short_shelf_life_inr: "137571.70", block_inr: "0.00", out_of_stock: 23, above_norm: 0, lines: 36, fefo_skip_pct: "28.1" }],
+    top_batches: [{ cfa: "CF-E01", sku_code: "PFL1501", product: "Atorvastatin 10 mg tablets", batch_no: "G2550105", expiry_date: "30-06-2028", on_hand_packs: "13987", monthly_outward_packs: "5244", packs_at_risk: "13987", blocked_packs: "0", value_at_risk_inr: "1135744.40", source: "cnf_stock_snapshot.csv:4783" }],
+  });
+  assert.match(html, /₹2\.06 cr/);
+  assert.match(html, /Not a write-off/);
+  assert.match(html, /CF-N02 Lucknow/);
+  assert.match(html, /23 \/ 36/);
+  assert.match(html, /cnf_stock_snapshot\.csv:4783/);
+  assert.deepEqual(resultBadge([], "STOCK_NEEDS_ACTION"), { label: "STOCK NEEDS ACTION", tone: "reject" });
+  assert.match(decisionOwner("STOCK_NEEDS_ACTION"), /Kavita Rao, Head of Supply Chain/);
+  assert.match(answerSummary("", [{ result_type: "stock_review", found: false, target: "15-09-2026" }]), /No stock snapshot/);
+  const page = fs.readFileSync(path.join(__dirname, "../public/index.html"), "utf8");
+  assert.match(page.slice(page.indexOf('aria-labelledby="stock-heading"')), /id="stock-out"/);
 });

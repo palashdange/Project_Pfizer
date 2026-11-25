@@ -55,6 +55,16 @@ SCHEME_REGISTER = {
     "QS-FY27Q2-A": ("SC/26/09", 2), "QS-FY27Q2-B": ("SC/26/09", 1),
 }  # Annexure B pp.5-6
 
+# C&F stock norms (C&F agreement SC-AGR-CF-003). Each C&F is topped up monthly to 2 months of its
+# allocated volume (Schedule 2 §2.2 p.3) and must pick first-expiry-first-out (clause 6.3 p.2;
+# Schedule 2 §2.3 p.3). A WMS change needs 30 days' notice and a batch-rule check (clause 4.3 p.2).
+CFA_TOPUP_MONTHS = 2.0  # Schedule 2 §2.2 p.3
+# FEFO signal: a PILOT THRESHOLD, not a contract number. A C&F is flagged when its share of dispatch
+# lines that skipped an older on-hand batch is at least this multiple of the other C&Fs' median.
+FEFO_SIGNAL_MULTIPLE = 2.0
+# Average days in a month, to turn an outward rate per month into days.
+DAYS_PER_MONTH = 30.4375
+
 # Clause labels shared by the graph's rule checks and their audit evidence.
 TRANSIT_CLAIM_POLICY_CLAUSE = "CO-POL-014 §5.2"
 EXPIRY_CLAIM_POLICY_CLAUSE = "CO-POL-014 §5.2"
@@ -67,3 +77,6 @@ PASTED_FIELDS_POLICY_CLAUSE = "CO-POL-014 §5.3; §5.7"
 SCHEME_CAP_POLICY_CLAUSE = "CO-POL-014 §4.4"
 SCHEME_TERMS_POLICY_CLAUSE = "CO-POL-014 §4.2; Annexure B"
 SCHEME_STOCK_NORM_POLICY_CLAUSE = "CO-POL-014 §4.5"
+STOCK_EXPIRY_POLICY_CLAUSE = "CO-POL-014 §7.1-7.2"
+STOCK_COVER_POLICY_CLAUSE = "C&F agreement Schedule 2 §2.2"
+STOCK_FEFO_POLICY_CLAUSE = "C&F agreement clause 6.3, 4.3"

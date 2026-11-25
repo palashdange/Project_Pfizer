@@ -11,6 +11,12 @@
 - **Accuracy:** check set **19/19** (16 claims + 3 scheme cases; baseline 6/16); held-out 3/6, then 6/6 after fixes built against those cases. `pytest -q`: **116 passed**. Batch mode: ₹19.94 L/yr credited leakage the rules stop. Scheme check: ₹1.58 cr/yr above cap.
 - **Second user** (Kavita Rao, Supply Chain): stock view built (section 4).
 
+## Update — 2026-11-25 (held-out round 2)
+
+- **Changed:** 8 new held-out cases (`holdout2_`): 6 claims drawn at random with seed 20261125 (2 near expiry, 1 expired, 1 breakage, 1 short supply, 1 any), the FY27 Q1 scheme quarter and the 31-12-2024 stock snapshot. Labelled by hand from the raw CSVs with a script that imports no app code, and committed (`c1878b4`) before the app ran on them. The runner scores each round separately.
+- **Result:** round 2 **8/8**, each for the labelled reason (two unverifiable claims → missing checks; late breakage → window only; FY27 Q1 over cap by ₹35,42,412.15, matching sizing.py). Main set 22/22; round 1 6/6 (not unseen).
+- **Open items:** model timeout; money summary; PDFs; deck.
+
 ## Update — 2026-11-25 (demos and graph flow)
 
 - **Changed:** new `/demos` page with 11 hand-checked cases (8 claims, scheme FY25 Q3, stock latest, free text), each showing its expected result. `run_question` returns the LangGraph node trace; `flow.js` draws the whole graph as inline SVG and replays the route (model nodes yellow, checks coloured by result). The flow is shown only on /demos, not on the pilot page. Demo list moved off the main page.

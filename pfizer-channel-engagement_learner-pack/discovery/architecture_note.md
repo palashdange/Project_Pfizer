@@ -69,14 +69,13 @@ flowchart TD
 
 ## 5. Accuracy
 
-| Version | Check set (hand-checked) | Held-out (6, labelled after the build) |
-|---|---|---|
-| Starter tool loop (commit `a22bdcc`) | 6/16 | — |
-| Claims graph, 24 Nov | **16/16** | 3/6 |
-| Current: + 3 scheme, 2 stock, 1 free-text case | **22/22** | 6/6* |
+| Version | Check set (hand-checked) | Held-out round 1 (6) | **Held-out round 2 (8)** |
+|---|---|---|---|
+| Starter tool loop (commit `a22bdcc`) | 6/16 | — | — |
+| Current graph (16 claims + 3 scheme, 2 stock, 1 free text) | **22/22** | 3/6 → 6/6* | **8/8** |
 
-`python checks/run_checks.py` scores held-out (`holdout_`) cases separately; the live URL matches. \*The first run (3/6) exposed two gaps: pasted details were not compared with the register, and repeats of *pending* claims were missed (CLM-2608-02222 → CLM-2609-04449). Both were fixed against these cases, so 6/6 **is no longer an unseen-data score**; a fresh held-out set is needed.
+`python checks/run_checks.py` scores held-out (`holdout_`) cases separately; the live URL matches. \*Round 1 (3/6) exposed two gaps, pasted details and pending repeats; both were fixed against those cases, so 6/6 is not an unseen-data score. **Round 2** is the honest one: 6 claims drawn at random (seed 20261125, stratified by type), 1 scheme quarter and 1 stock snapshot, labelled by hand from the raw CSVs, committed before the app ran (`c1878b4`); FY27 Q1 was seen in development.
 
 ## 6. Speed and cost (24 Nov 2026, `openai/gpt-4o-mini` via OpenRouter; live on Vercel `bom1` Mumbai, private repo, owner merges)
 
-**Cost per run:** a claim ID makes 1 model call (CLM-2404-04177: 825 tokens in / 56 out, $0.000157); free text with no ID makes 2 (520 / 96, $0.000136); scheme and stock reviews make 1. Means of 2 runs at OpenRouter list prices ($0.15/M in, $0.60/M out). **~4,000 claims/yr × ~$0.00016 ≈ $0.65/yr**, hosting excluded. Live: 2–2.7 s a review, 4–6 s for scheme or stock.
+**Cost per run:** a claim ID makes 1 model call (CLM-2404-04177: 825 tokens in / 56 out, $0.000157); free text with no ID makes 2 (520 / 96, $0.000136); scheme and stock reviews make 1. Means of 2 runs at OpenRouter list prices ($0.15/M in, $0.60/M out). **~4,000 claims/yr × ~$0.00016 ≈ $0.65/yr** (no hosting). Live: 2–2.7 s a review, 4–6 s for scheme or stock.

@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict
 from agent import data
 from agent.llm import get_llm
 from agent.prompts import EXPLAIN_SYSTEM_PROMPT, PARSE_INPUT_SYSTEM_PROMPT
+from agent.schemes import available_quarters, review_scheme
 from agent.rules import (
     assess_expiry_claim_window,
     assess_transit_claim_window,
@@ -36,6 +37,7 @@ from config import (
 
 CLAIM_PATTERN = re.compile(r"\bCLM-\d{4}-\d{5}\b", re.IGNORECASE)
 EMAIL_PATTERN = re.compile(r"\bEML-\d{3}\b", re.IGNORECASE)
+SCHEME_PATTERN = re.compile(r"\bQS-FY\d{2}Q[1-4]-[AB]\b|\bFY\s?\d{2}\s*Q[1-4]\b", re.IGNORECASE)
 
 
 class ClaimExtraction(BaseModel):
@@ -66,6 +68,7 @@ class State(TypedDict):
     evidence: list[dict]
     model_calls: int
     elapsed_seconds: float
+    scheme_target: str
 
 
 def _source_row(row: Optional[dict]) -> Optional[dict]:
@@ -204,6 +207,11 @@ def parse_input(state: State) -> dict:
             "records": {**state.get("records", {}), "email": email},
             "evidence": [email_evidence],
         })
+
+    scheme = SCHEME_PATTERN.search(text)
+    if scheme:
+        # A quarter or scheme code goes to the scheme review; no model call to parse it.
+        return {"scheme_target": re.sub(r"\s+", " ", scheme.group(0).upper().replace("FY ", "FY"))}
 
     # The user text is data to extract from, never an instruction to execute.
     try:
@@ -568,7 +576,30 @@ def explain(state: State) -> dict:
     return {"explanation": explanation, "model_calls": calls}
 
 
+def scheme_review(state: State) -> dict:
+    """Review a quarter-end scheme or quarter against §4.4, Annexure B and §4.5, in code."""
+    result = review_scheme(state["scheme_target"])
+    if result is None:
+        return {
+            "route": "NOT_FOUND",
+            "evidence": [{"result_type": "scheme_review", "target": state["scheme_target"], "found": False,
+                          "route": "NOT_FOUND", "checks": {},
+                          "available_quarters": available_quarters()}],
+        }
+    return {
+        "route": result["route"],
+        "checks": result["checks"],
+        "evidence": [{"result_type": "scheme_review", "found": True, **result}],
+    }
+
+
+def _after_scheme(state: State) -> str:
+    return END if state.get("route") == "NOT_FOUND" else "explain"
+
+
 def _after_parse(state: State) -> str:
+    if state.get("scheme_target"):
+        return "scheme_review"
     if state.get("route") == "NEEDS_PERSON" and not state.get("claim_no"):
         return "explain"
     return "lookup"
@@ -597,7 +628,9 @@ builder.add_node("check_pasted_fields", check_pasted_fields)
 builder.add_node("decide", decide)
 builder.add_node("explain", explain)
 builder.add_edge(START, "parse_input")
-builder.add_conditional_edges("parse_input", _after_parse, {"lookup": "lookup", "explain": "explain"})
+builder.add_node("scheme_review", scheme_review)
+builder.add_conditional_edges("parse_input", _after_parse, {"lookup": "lookup", "explain": "explain", "scheme_review": "scheme_review"})
+builder.add_conditional_edges("scheme_review", _after_scheme, {"explain": "explain", END: END})
 builder.add_conditional_edges("lookup", _after_lookup, {"dispatch_checks": "dispatch_checks", END: END})
 # Fan out checks in one superstep, then wait for every independent check to finish.
 CHECK_NODES = (
@@ -632,6 +665,7 @@ def review_claim(claim_no: str) -> dict:
     final = review_graph.invoke({
         "input_text": claim_no, "claim_no": claim_no, "email_id": "", "records": {}, "checks": {},
         "route": "", "explanation": "", "evidence": [], "model_calls": 0, "elapsed_seconds": 0.0,
+        "scheme_target": "",
     })
     return {"route": final.get("route", "NEEDS_PERSON"), "checks": final.get("checks", {})}
 
@@ -650,6 +684,7 @@ def run_question(question: str) -> dict:
         "evidence": [],
         "model_calls": 0,
         "elapsed_seconds": 0.0,
+        "scheme_target": "",
     })
     elapsed = time.perf_counter() - started
     return {

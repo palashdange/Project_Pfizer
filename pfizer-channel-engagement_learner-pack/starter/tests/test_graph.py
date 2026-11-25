@@ -300,6 +300,8 @@ def test_stock_review_latest_snapshot_flags_kolkata_and_lucknow(monkeypatch):
     assert by_cfa["CF-N02"]["out_of_stock"] == 23  # Lucknow: 23 of 36 SKUs empty
     assert result["checks"]["fefo_signal"]["flagged"] == ["CF-E01"]
     assert result["checks"]["expiry_block"]["status"] == "pass"  # no write-off risk at this snapshot
+    nearest = result["checks"]["expiry_block"]["nearest"]
+    assert nearest["days_to_block"] > 0 and nearest["source"].startswith("cnf_stock_snapshot.csv:")
 
 
 def test_stock_batch_past_its_60_percent_point_is_counted_in_full():

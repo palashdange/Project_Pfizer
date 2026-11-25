@@ -13,7 +13,7 @@ test("weekly review page exposes read-only status and supported checks", () => {
   assert.match(html, /Read-only decision support/);
   assert.match(html, /No ERP\/WMS write-back/);
   assert.match(html, /Human review required/);
-  assert.match(html, /evidence\.js\?v=18/);
+  assert.match(html, /evidence\.js\?v=19/);
   assert.match(html, /app\.js\?v=12/);
   assert.match(html, /Review a claim/);
   assert.match(html, /Inspect a claim email/);
@@ -399,4 +399,14 @@ test("stock review shows risk tiles, per-C&F table, cited batches, and Kavita Ra
   assert.match(answerSummary("", [{ result_type: "stock_review", found: false, target: "15-09-2026" }]), /No stock snapshot/);
   const page = fs.readFileSync(path.join(__dirname, "../public/index.html"), "utf8");
   assert.match(page.slice(page.indexOf('aria-labelledby="stock-heading"')), /id="stock-out"/);
+});
+
+test("write-off tile says None with the nearest batch when nothing will be blocked", () => {
+  const base = { result_type: "stock_review", found: true, snapshot: "30-09-2026", by_cfa: [], top_batches: [] };
+  const none = renderEvidence({ ...base, checks: { expiry_block: { status: "pass", value_inr: "0.00", evidence_rows: [],
+    nearest: { batch_no: "K2400123", cfa: "CF-W01", days_to_block: 41 } } } });
+  assert.match(none, /<strong>None<\/strong>/);
+  assert.match(none, /Nearest: K2400123 at CF-W01, 41 days from its block date/);
+  const some = renderEvidence({ ...base, checks: { expiry_block: { status: "fail", value_inr: "1183870.50", evidence_rows: [] } } });
+  assert.match(some, /₹11\.84 L/);
 });

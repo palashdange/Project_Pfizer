@@ -14,6 +14,7 @@ from typing import Optional
 
 from agent.batch import run_batch
 from agent.graph import run_question
+from agent.search import search_claims
 
 app = FastAPI(title="Project Sankalp pilot")
 ROOT = Path(__file__).resolve().parent
@@ -49,6 +50,12 @@ def batch(body: Batch):
         return run_batch(body.month)
     except ValueError as err:  # unknown month: say so instead of a bare 500
         return JSONResponse({"error": str(err)}, status_code=400)
+
+
+@app.get("/api/claims/search")
+def claims_search(q: str = "", pending_only: bool = False, limit: int = 20):
+    """Find register claims (and claim emails) for the claim-review box; pending claims first."""
+    return search_claims(q[:100], pending_only=pending_only, limit=limit)
 
 
 @app.get("/")

@@ -13,9 +13,19 @@ test("weekly review page exposes read-only status and supported checks", () => {
   assert.match(html, /Read-only decision support/);
   assert.match(html, /No ERP\/WMS write-back/);
   assert.match(html, /Human review required/);
-  assert.match(html, /evidence\.js\?v=19/);
-  assert.match(html, /app\.js\?v=14/);
-  assert.match(html, /1\. Claim review · Commercial Finance claims triage/);
+  assert.match(html, /evidence\.js\?v=20/);
+  assert.match(html, /app\.js\?v=15/);
+  assert.match(html, /claim-search\.js/);
+  assert.match(html, /Project Sankalp copilot/);
+  assert.match(html, /Fictional training case/);
+  // The overview says who each section is for and the question it answers.
+  for (const question of ["Should we credit this claim?", "What would these checks have caught?", "Did this quarter's schemes follow the policy?", "Where is stock short, or ageing before it ships?"]) {
+    assert.ok(html.includes(question), question);
+  }
+  assert.match(html, /role="combobox"/);
+  assert.match(html, /id="pending-only"/);
+  assert.match(html, /id="ai-label"/);
+  assert.match(html, /1\. Claim review<\/h2>/);
   assert.doesNotMatch(html, /Local demo|scenario replay/);
   assert.match(html, /href="\/demos"/);
   // The LangGraph flow is shown only on /demos, not on the pilot page.
@@ -104,7 +114,7 @@ test("claims route is shown as the verdict badge and checks render as a cited ta
   };
   const html = renderEvidence(item);
 
-  assert.deepEqual(resultBadge([item], "REJECT"), { label: "REJECT", tone: "reject" });
+  assert.deepEqual(resultBadge([item], "REJECT"), { label: "Reject", tone: "reject" });
   assert.match(html, /Claims decision checks/);
   assert.match(html, /expiry_claims\.csv:2/);
   assert.match(html, /CO-POL-014 §5\.2/);
@@ -361,7 +371,7 @@ test("scheme review shows cap, eligibility range, cited checks, and who decides"
   assert.match(html, /ask the client/);
   assert.match(html, /primary_sales\.csv:12345/);
   assert.match(html, /§4\.5/);
-  assert.deepEqual(resultBadge([], "SCHEME_NEEDS_REVIEW"), { label: "SCHEME NEEDS REVIEW", tone: "reject" });
+  assert.deepEqual(resultBadge([], "SCHEME_NEEDS_REVIEW"), { label: "Scheme: breaks policy", tone: "reject" });
   assert.match(decisionOwner("SCHEME_NEEDS_REVIEW"), /National Sales Manager, Arjun Sethi; the CFO, Rohan Mehta/);
   assert.match(renderEvidence({ result_type: "scheme_review", found: false, target: "FY23 Q1", available_quarters: ["FY25 Q1"] }), /not found/);
 });
@@ -390,7 +400,7 @@ test("stock review shows risk tiles, per-C&F table, cited batches, and Kavita Ra
   assert.match(html, /CF-N02 Lucknow/);
   assert.match(html, /23 \/ 36/);
   assert.match(html, /cnf_stock_snapshot\.csv:4783/);
-  assert.deepEqual(resultBadge([], "STOCK_NEEDS_ACTION"), { label: "STOCK NEEDS ACTION", tone: "reject" });
+  assert.deepEqual(resultBadge([], "STOCK_NEEDS_ACTION"), { label: "Stock: needs action", tone: "reject" });
   assert.match(decisionOwner("STOCK_NEEDS_ACTION"), /Kavita Rao, Head of Supply Chain/);
   assert.match(answerSummary("", [{ result_type: "stock_review", found: false, target: "15-09-2026" }]), /No stock snapshot/);
   const page = fs.readFileSync(path.join(__dirname, "../public/index.html"), "utf8");

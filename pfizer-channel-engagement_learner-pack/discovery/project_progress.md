@@ -8,8 +8,14 @@
 
 - **Deployed:** https://project-pfizer.vercel.app (Vercel Hobby, auto-deploys from `master`). Region `bom1` confirmed live. The repo is private and still deploys (owner merges via PR, merge commit).
 - **First user: Commercial Finance claims executive** (owner Neha Bansal). The graph routes each claim to recommend credit, reject, needs a person, or not found. Code decides; the model only parses free text and explains.
-- **Accuracy:** check set **22/22** (16 claims + 3 scheme, 2 stock, 1 free text; baseline 6/16); held-out round 1 3/6, then 6/6 after fixes built against those cases; held-out round 2 **8/8** (labelled before running). `pytest -q`: **130 passed**; Node tests 26/26. Batch mode: ₹19.94 L/yr credited leakage the rules stop. Scheme check: ₹1.58 cr/yr above cap.
+- **Accuracy:** check set **22/22** (16 claims + 3 scheme, 2 stock, 1 free text; baseline 6/16); held-out round 1 3/6, then 6/6 after fixes built against those cases; held-out round 2 **8/8** (labelled before running). `pytest -q`: **139 passed**; Node tests 32/32. Batch mode: ₹19.94 L/yr credited leakage the rules stop. Scheme check: ₹1.58 cr/yr above cap.
 - **Second user** (Kavita Rao, Supply Chain): stock view built (section 4).
+
+## Update — 2026-11-25 (page made self-explaining)
+
+- **Changed:** page renamed "Pfizer · Project Sankalp copilot" (fictional-case note kept); overview cards say who each section is for and the question it answers; a legend explains the outcomes and that code decides. Claim review has a search-as-you-type box over all 4,503 claims (pending first; by claim number, stockist, city, SKU or batch). Each result shows answer, why, next step, who decides, and the explanation labelled AI-checked-by-code or code. Plain check names, coloured results, ₹ grouping, source rows behind a toggle; same on /demos. The explain prompt asks for ₹ in Indian format and no approval words; the guard compares number values.
+- **Evidence/checks:** `pytest -q` 139 passed; Node tests 32/32; check set 22/22, held-out 6/6 and 8/8 with the live model; browser run on desktop and at 390 px (no horizontal scroll, no console errors).
+- **Open items:** deck.
 
 ## Update — 2026-11-25 (model timeout and architecture note)
 

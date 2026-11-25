@@ -14,6 +14,11 @@
       elements.decisionOwner.textContent = "";
       elements.decisionOwner.hidden = true;
     }
+    ["why", "next"].forEach((key) => {
+      if (elements[key]) { elements[key].replaceChildren(); elements[key].hidden = true; }
+    });
+    if (elements.aiLabel) { elements.aiLabel.textContent = ""; elements.aiLabel.hidden = true; }
+    if (elements.headline) elements.headline.textContent = "Result";
     if (elements.flow) {
       elements.flow.replaceChildren();
       elements.flow.hidden = true;

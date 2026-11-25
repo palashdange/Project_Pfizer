@@ -68,6 +68,7 @@ class State(TypedDict):
     checks: Annotated[dict[str, dict], lambda old, new: {**old, **new}]
     route: str
     explanation: str
+    explanation_source: str  # "model" (passed the code guard), "code" (fallback) or "" (no explain step)
     evidence: list[dict]
     model_calls: int
     elapsed_seconds: float
@@ -544,6 +545,20 @@ def decide(state: State) -> dict:
     return {"route": route, "evidence": evidence}
 
 
+_NUMBER = re.compile(r"\d[\d,]*(?:\.\d+)?")
+
+
+def _numbers(text: str) -> set:
+    """Numeric values in a text, so that 11026604.20, 1,10,26,604.20 and 11026604.2 compare equal."""
+    values = set()
+    for token in _NUMBER.findall(text):
+        try:
+            values.add(Decimal(token.replace(",", "")).normalize())
+        except InvalidOperation:
+            continue
+    return values
+
+
 def _fallback_explanation(route: str, checks: dict) -> str:
     """Summarize only values already present in checks when model explanation fails."""
     failed = [f"{name}: {item.get('reason', 'review needed')} ({item.get('policy_clause', 'no clause')})"
@@ -566,8 +581,9 @@ def explain(state: State) -> dict:
             HumanMessage(json.dumps({"route": route, "checks": checks}, ensure_ascii=False, default=str)),
         ])
         explanation = str(reply.content).strip()
-        allowed_numbers = set(re.findall(r"\d+(?:[.,]\d+)*", json.dumps(checks, ensure_ascii=False, default=str)))
-        used_numbers = set(re.findall(r"\d+(?:[.,]\d+)*", explanation))
+        # Compare values, not spellings: the model may write ₹ amounts in Indian format (1,10,26,604.20).
+        allowed_numbers = _numbers(json.dumps(checks, ensure_ascii=False, default=str))
+        used_numbers = _numbers(explanation)
         # Keep the model from presenting a recommendation as an executed approval or action.
         unsafe_decision_text = bool(
             re.search(
@@ -578,11 +594,12 @@ def explain(state: State) -> dict:
             )
         )
         sentences = [part for part in re.split(r"(?<=[.!?])\s+", explanation) if part]
+        source = "model"
         if not 3 <= len(sentences) <= 5 or not used_numbers.issubset(allowed_numbers) or unsafe_decision_text:
-            explanation = _fallback_explanation(route, checks)
+            explanation, source = _fallback_explanation(route, checks), "code"
     except Exception:
-        explanation = _fallback_explanation(route, checks)
-    return {"explanation": explanation, "model_calls": calls}
+        explanation, source = _fallback_explanation(route, checks), "code"
+    return {"explanation": explanation, "explanation_source": source, "model_calls": calls}
 
 
 def scheme_review(state: State) -> dict:
@@ -713,6 +730,7 @@ def run_question(question: str) -> dict:
         "checks": {},
         "route": "",
         "explanation": "",
+        "explanation_source": "",
         "evidence": [],
         "model_calls": 0,
         "elapsed_seconds": 0.0,
@@ -734,6 +752,7 @@ def run_question(question: str) -> dict:
         "evidence": final.get("evidence", []),
         "explanation": final.get("explanation", ""),
         "answer": final.get("explanation", ""),
+        "explanation_source": final.get("explanation_source", ""),
         "model_calls": final.get("model_calls", 0),
         "elapsed_seconds": round(elapsed, 3),
         "trace": trace,

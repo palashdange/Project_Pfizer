@@ -3,62 +3,101 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Project Sankalp pilot</title>
-<link rel="stylesheet" href="/style.css?v=15">
+<title>Pfizer · Project Sankalp copilot</title>
+<link rel="stylesheet" href="/style.css?v=16">
 </head>
 <body>
 <main>
   <header class="page-header">
     <div>
-      <p class="eyebrow">PROJECT SANKALP · COMMERCIAL FINANCE</p>
-      <h1>Weekly claims review</h1>
-      <p class="hint">Screen claims against the claims, invoice, batch and product records. A person makes the final credit decision.</p>
+      <p class="eyebrow">PFIZER · DOMESTIC TRADE CHANNEL</p>
+      <h1>Project Sankalp copilot</h1>
+      <p class="hint">Checks claims, quarter-end schemes and C&amp;F stock against the trade policy (CO-POL-014) and the C&amp;F agreement. It recommends; a named person decides. <span class="fiction">Fictional training case: all names and figures are invented.</span></p>
     </div>
     <div class="read-only" role="note">Read-only decision support · No ERP/WMS write-back · Human review required</div>
   </header>
 
-  <section class="input-card" aria-labelledby="question-heading">
-    <h2 id="question-heading">1. Claim review · Commercial Finance claims triage</h2>
-    <p class="hint">Enter a claim number, paste claim details, or inspect an email ID. The copilot does not issue credit notes.</p>
-    <p class="demo-link"><a href="/demos">See the demo cases and the LangGraph flow →</a></p>
-    <form id="ask">
-      <label class="sr-only" for="q">Ask about a claim</label>
-      <input id="q" placeholder="For example: Review claim CLM-2605-04488 or inspect EML-017." autocomplete="off">
-      <button class="ask-button">Ask</button>
+  <nav class="overview" aria-label="What this page does">
+    <a class="overview-card" href="#claim-section"><span class="step">1</span><strong>Claim review</strong><span class="who">Claims team · weekly</span><span class="question">Should we credit this claim?</span></a>
+    <a class="overview-card" href="#batch-section"><span class="step">2</span><strong>Batch review</strong><span class="who">Claims team · monthly</span><span class="question">What would these checks have caught?</span></a>
+    <a class="overview-card" href="#scheme-section"><span class="step">3</span><strong>Scheme check</strong><span class="who">Commercial Finance, Sales head, CFO · quarterly</span><span class="question">Did this quarter's schemes follow the policy?</span></a>
+    <a class="overview-card" href="#stock-section"><span class="step">4</span><strong>Stock risk</strong><span class="who">Head of Supply Chain · month-end</span><span class="question">Where is stock short, or ageing before it ships?</span></a>
+  </nav>
+
+  <details class="legend">
+    <summary>How to read the results</summary>
+    <div class="legend-body">
+      <p><strong>Code decides every result.</strong> Every rule, date, join and sum is checked in code against the case files. The AI only reads pasted text into fields and writes the plain-English explanation; code rejects that explanation if it adds a number or approval wording.</p>
+      <ul class="legend-list">
+        <li><span class="decision-badge recommend">Credit recommended</span> every check passed; a person raises the credit note.</li>
+        <li><span class="decision-badge reject">Reject</span> a policy rule failed (late, repeat, or more packs than sold).</li>
+        <li><span class="decision-badge review">Needs a person</span> something can't be confirmed from the data; don't credit yet.</li>
+        <li><span class="decision-badge review">Not found</span> not in the data, so nothing was checked.</li>
+        <li><span class="status-badge pass">Passed</span> <span class="status-badge fail">Failed</span> <span class="status-badge review">Check</span> <span class="status-badge missing">Can't check</span> the result of each individual check.</li>
+      </ul>
+    </div>
+  </details>
+
+  <section class="input-card" id="claim-section" aria-labelledby="question-heading">
+    <h2 id="question-heading">1. Claim review</h2>
+    <p class="section-meta">For the claims team · each week</p>
+    <p class="hint">Should we credit this claim? Search by claim number, stockist, city, product or batch and pick a claim. You can also paste a claim email or its details.</p>
+    <form id="ask" autocomplete="off">
+      <div class="combo">
+        <label class="sr-only" for="q">Search for a claim, or paste claim details</label>
+        <input id="q" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="claim-options" placeholder="Search: CLM-2605-04488, Ludhiana, PFL1303, a batch number… or paste an email">
+        <ul id="claim-options" class="combo-list" role="listbox" aria-label="Matching claims" hidden></ul>
+      </div>
+      <button class="ask-button">Review</button>
     </form>
+    <div class="combo-options">
+      <label class="switch"><input type="checkbox" id="pending-only"> Pending claims only</label>
+      <span id="combo-count" class="hint"></span>
+      <a class="demo-link" href="/demos">See the demo cases and the LangGraph flow →</a>
+    </div>
+    <p class="rules">Rules used (CO-POL-014): filed in time §5.2 · invoice reference §5.4 · quantity §5.5 · repeat claims §5.6 · value at PTS (price to stockist) §5.7</p>
     <p id="status" class="hint status" role="status" aria-live="polite"></p>
     <div id="out" class="result-area" hidden>
       <div class="answer-card">
         <div class="answer-heading">
-          <h3>Result</h3>
+          <h3 id="headline">Result</h3>
           <span id="decision-badge" class="decision-badge" hidden></span>
         </div>
+        <div id="why" class="result-block" hidden></div>
+        <div id="next" class="result-block next-step" hidden></div>
         <p id="decision-owner" class="decision-owner" hidden></p>
-        <p id="answer"></p>
+        <div id="ai-box" class="ai-box">
+          <p id="ai-label" class="ai-label" hidden></p>
+          <p id="answer"></p>
+        </div>
       </div>
       <h3>Evidence from the data</h3>
       <div id="evidence" class="evidence-list"></div>
       <details id="raw-details" class="raw-details">
-        <summary>View raw evidence</summary>
+        <summary>View raw evidence (JSON)</summary>
         <pre id="raw-evidence"></pre>
       </details>
     </div>
   </section>
 
-  <section class="input-card batch-card" aria-labelledby="batch-heading">
-    <h2 id="batch-heading">2. Batch review · what the pilot would have caught</h2>
-    <p class="hint">Runs every claim in the register (or one month) through the same checks, in code, with no model calls. Rupees are totalled in Python from <code>expiry_claims.csv</code>.</p>
+  <section class="input-card batch-card" id="batch-section" aria-labelledby="batch-heading">
+    <h2 id="batch-heading">2. Batch review</h2>
+    <p class="section-meta">For the claims team · each month</p>
+    <p class="hint">What would these checks have caught? Runs every claim in the register, or one month, through the same rules as a single review. Code only, no AI.</p>
     <div class="batch-controls">
       <label class="sr-only" for="batch-month">Period</label>
       <select id="batch-month"><option value="">All months in the register</option></select>
       <button type="button" id="batch-run">Run batch</button>
     </div>
+    <p class="rules">"Stopped" = credited although a rule fails. "At risk" = credited without the checks passing; sent to a person, not counted as saved.</p>
     <p id="batch-status" class="hint status" role="status" aria-live="polite"></p>
     <div id="batch-out" hidden></div>
   </section>
-  <section class="input-card batch-card" aria-labelledby="scheme-heading">
-    <h2 id="scheme-heading">3. Scheme check · quarter-end schemes</h2>
-    <p class="hint">For Commercial Finance's scheme cost check and the National Sales Manager (CO-POL-014 §4.3). Checks a quarter against the §4.4 3% cap and Annexure B (1.5× minimum order, validity window, SKU list, free ratio), in code. §4.5 stock norm cannot be checked: no secondary sales data.</p>
+
+  <section class="input-card batch-card" id="scheme-section" aria-labelledby="scheme-heading">
+    <h2 id="scheme-heading">3. Scheme check</h2>
+    <p class="section-meta">For Commercial Finance, the National Sales Manager and the CFO · each quarter</p>
+    <p class="hint">Did this quarter's free-goods (FOC) schemes follow the trade policy? Pick a quarter.</p>
     <div class="batch-controls">
       <label class="sr-only" for="scheme-target">Quarter</label>
       <select id="scheme-target">
@@ -75,27 +114,35 @@
       </select>
       <button type="button" id="scheme-run">Check schemes</button>
     </div>
+    <p class="rules">Rules used: free goods at most 3% of the quarter's sales §4.4 · CFO approves above the cap §4.3 · order at least 1.5× a normal month, scheme dates, product list and free ratio (Annexure B) · stockist stock under 2.5 months §4.5 can't be checked (no stockist sales data)</p>
     <p id="scheme-status" class="hint status" role="status" aria-live="polite"></p>
     <div id="scheme-out" class="result-area" hidden>
       <div class="answer-card">
         <div class="answer-heading">
-          <h3>Result</h3>
+          <h3 id="scheme-headline">Result</h3>
           <span id="scheme-decision-badge" class="decision-badge" hidden></span>
         </div>
+        <div id="scheme-why" class="result-block" hidden></div>
+        <div id="scheme-next" class="result-block next-step" hidden></div>
         <p id="scheme-decision-owner" class="decision-owner" hidden></p>
-        <p id="scheme-answer"></p>
+        <div id="scheme-ai-box" class="ai-box">
+          <p id="scheme-ai-label" class="ai-label" hidden></p>
+          <p id="scheme-answer"></p>
+        </div>
       </div>
       <h3>Evidence from the data</h3>
       <div id="scheme-evidence" class="evidence-list"></div>
       <details id="scheme-raw-details" class="raw-details">
-        <summary>View raw evidence</summary>
+        <summary>View raw evidence (JSON)</summary>
         <pre id="scheme-raw-evidence"></pre>
       </details>
     </div>
   </section>
-  <section class="input-card batch-card" aria-labelledby="stock-heading">
-    <h2 id="stock-heading">4. Stock and expiry risk · Supply Chain</h2>
-    <p class="hint">For Kavita Rao, Head of Supply Chain. At a month-end snapshot, for every C&F: stock that will ship below the 60% shelf-life norm or hit the 60-day block (CO-POL-014 §7.1–7.2), out-of-stock lines, cover above the 2-month top-up norm (C&F agreement §2.2), and dispatches that skipped older stock (FEFO, clause 6.3). In code.</p>
+
+  <section class="input-card batch-card" id="stock-section" aria-labelledby="stock-heading">
+    <h2 id="stock-heading">4. Stock and expiry risk</h2>
+    <p class="section-meta">For Kavita Rao, Head of Supply Chain · each month-end</p>
+    <p class="hint">Where is stock short, or ageing before it ships? Pick a month-end to see every C&amp;F (regional warehouse).</p>
     <div class="batch-controls">
       <label class="sr-only" for="stock-target">Snapshot</label>
       <select id="stock-target">
@@ -116,28 +163,35 @@
       </select>
       <button type="button" id="stock-run">Check stock</button>
     </div>
+    <p class="rules">Rules used: at least 60% shelf life left at dispatch §7.1 · 60-day block §7.2 · top up to 2 months' cover (C&amp;F agreement §2.2) · ship the oldest stock first (FEFO, clause 6.3)</p>
     <p id="stock-status" class="hint status" role="status" aria-live="polite"></p>
     <div id="stock-out" class="result-area" hidden>
       <div class="answer-card">
         <div class="answer-heading">
-          <h3>Result</h3>
+          <h3 id="stock-headline">Result</h3>
           <span id="stock-decision-badge" class="decision-badge" hidden></span>
         </div>
+        <div id="stock-why" class="result-block" hidden></div>
+        <div id="stock-next" class="result-block next-step" hidden></div>
         <p id="stock-decision-owner" class="decision-owner" hidden></p>
-        <p id="stock-answer"></p>
+        <div id="stock-ai-box" class="ai-box">
+          <p id="stock-ai-label" class="ai-label" hidden></p>
+          <p id="stock-answer"></p>
+        </div>
       </div>
       <h3>Evidence from the data</h3>
       <div id="stock-evidence" class="evidence-list"></div>
       <details id="stock-raw-details" class="raw-details">
-        <summary>View raw evidence</summary>
+        <summary>View raw evidence (JSON)</summary>
         <pre id="stock-raw-evidence"></pre>
       </details>
     </div>
   </section>
 </main>
-<script src="/evidence.js?v=19"></script>
-<script src="/progress.js?v=8"></script>
-<script src="/app.js?v=14"></script>
-<script src="/batch.js?v=2"></script>
+<script src="/evidence.js?v=20"></script>
+<script src="/progress.js?v=9"></script>
+<script src="/app.js?v=15"></script>
+<script src="/claim-search.js?v=1"></script>
+<script src="/batch.js?v=3"></script>
 </body>
 </html>

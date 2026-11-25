@@ -349,3 +349,28 @@ def test_trace_records_the_route_through_the_graph(monkeypatch):
     assert missing["trace"] == ["parse_input", "lookup"]
     assert scheme["trace"] == ["parse_input", "scheme_review", "explain"]
     assert stock["trace"] == ["parse_input", "stock_review", "explain"]
+
+
+def test_explanation_may_format_rupees_but_not_change_their_value(monkeypatch):
+    """CLM-2605-04488's checks cite 26846.4; the model may write ₹26,846.40 but not ₹26,846.50."""
+    monkeypatch.setattr(graph_module, "get_llm", lambda: ExplainOnlyLLM(
+        "This claim is recommended for rejection. An earlier claim for the same batch was already credited. "
+        "The claim value is ₹26,846.40. A person remains responsible for any final action."))
+    formatted = graph_module.run_question("Review CLM-2605-04488")
+    assert formatted["explanation_source"] == "model"
+    assert "₹26,846.40" in formatted["explanation"]
+
+    monkeypatch.setattr(graph_module, "get_llm", lambda: ExplainOnlyLLM(
+        "This claim is recommended for rejection. An earlier claim for the same batch was already credited. "
+        "The claim value is ₹26,846.50. A person remains responsible for any final action."))
+    changed = graph_module.run_question("Review CLM-2605-04488")
+    assert changed["explanation_source"] == "code"
+    assert "26,846.50" not in changed["explanation"]
+
+
+def test_explanation_source_is_code_when_the_guard_rejects_approval_wording(monkeypatch):
+    monkeypatch.setattr(graph_module, "get_llm", lambda: ExplainOnlyLLM(
+        "All checks passed. The claim should be approved for credit. A person remains responsible for any final action."))
+    result = graph_module.run_question("Review CLM-2404-04177")
+    assert result["explanation_source"] == "code"
+    assert result["route"] == "RECOMMEND_CREDIT"

@@ -383,6 +383,73 @@
     return formatInr(amount);
   }
 
+  // Plain names for the checks, so a reader does not need the code's keys.
+  const CHECK_NAMES = {
+    window: "Filed in time", quantity: "Within the quantity sold", duplicate: "Not claimed before",
+    invoice_ref: "Has a matching invoice", batch_expiry: "Expiry matches the batch", value: "Value = quantity × PTS",
+    pasted_fields: "Pasted details match the register", input_parse: "Claim identified",
+    cap: "Free goods within the 3% cap", eligibility: "Orders at least 1.5× a normal month",
+    validity_window: "Within the scheme dates", sku_list: "Product is on the scheme", free_ratio: "Free packs within the scheme ratio",
+    stock_norm: "Stockist holds under 2.5 months' stock",
+    short_shelf_life: "Ships with at least 60% shelf life", expiry_block: "Clear of the 60-day block",
+    out_of_stock: "Every line in stock", above_norm: "Cover within 2 months", fefo_signal: "Oldest stock shipped first",
+  };
+  const STATUS_TEXT = { pass: "Passed", fail: "Failed", review: "Check", missing: "Can't check" };
+
+  function checkName(key) { return CHECK_NAMES[key] || labelFor(key); }
+
+  function statusBadge(status) {
+    const key = String(status || "").toLowerCase();
+    return `<span class="status-badge ${escapeHtml(key)}">${escapeHtml(STATUS_TEXT[key] || scalar(status))}</span>`;
+  }
+
+  // Add Indian digit grouping to long numbers inside code-written findings ("26846.4" → "26,846.40").
+  // Identifiers (CLM-2603-01616, rows, dates) are left alone.
+  function formatNumbersInText(text) {
+    return String(text).replace(/(^|[^\w\-/:.])(\d{4,})(\.\d+)?(?![\w\-/])/g, (match, lead, whole, decimals) => {
+      if (!decimals && whole.length < 5) return match;
+      const grouped = new Intl.NumberFormat("en-IN").format(Number(whole));
+      const fraction = decimals ? (decimals.length === 2 ? `${decimals}0` : decimals) : "";
+      return `${lead}${grouped}${fraction}`;
+    });
+  }
+
+  function sourceText(check) {
+    return (check.evidence_rows || []).map((row) => `${row.file || "—"}:${row.source_row || "—"}`).join(", ");
+  }
+
+  // One table for claim, scheme and stock checks: plain name, coloured result, finding, rule;
+  // source rows are one tap away ("Show source rows").
+  function renderChecksTable(checks, title) {
+    const entries = Object.entries(checks || {});
+    if (!entries.length) return '<p class="muted">No checks were run.</p>';
+    const body = entries.map(([key, check]) => {
+      const source = sourceText(check);
+      return `<tr class="check-row ${escapeHtml(String(check.status || "").toLowerCase())}">
+        <td><strong>${escapeHtml(checkName(key))}</strong><br><span class="check-key">${escapeHtml(labelFor(key))}</span></td>
+        <td>${statusBadge(check.status)}</td>
+        <td>${escapeHtml(formatNumbersInText(check.reason || "—"))}${source ? `<span class="src">Source &amp; row: ${escapeHtml(source)}</span>` : ""}</td>
+        <td class="clause">${escapeHtml(check.policy_clause || "—")}</td>
+      </tr>`;
+    }).join("");
+    return `<div class="checks-head"><h4>${escapeHtml(title)}</h4>
+        <button type="button" class="source-toggle" aria-pressed="false" data-source-toggle>Show source rows</button></div>
+      <div class="table-wrap"><table class="checks-table"><thead><tr><th scope="col">Check</th><th scope="col">Result</th><th scope="col">What we found</th><th scope="col">Rule</th></tr></thead>
+      <tbody>${body}</tbody></table></div>`;
+  }
+
+  function attachSourceToggles(container) {
+    if (!container || !container.querySelectorAll) return;
+    container.querySelectorAll("[data-source-toggle]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const card = button.closest(".evidence-card");
+        const shown = card.classList.toggle("show-sources");
+        button.setAttribute("aria-pressed", String(shown));
+        button.textContent = shown ? "Hide source rows" : "Show source rows";
+      });
+    });
+  }
+
   function renderSchemeReview(item) {
     if (!item.found) {
       return `<article class="evidence-card"><h3>Scheme or quarter ${escapeHtml(item.target || "")} not found</h3>
@@ -391,13 +458,6 @@
     const checks = item.checks || {};
     const cap = checks.cap || {};
     const elig = checks.eligibility || {};
-    const rows = Object.entries(checks).map(([key, check]) => ({
-      check: labelFor(key),
-      status: scalar(check.status).toUpperCase(),
-      source: (check.evidence_rows || []).map((row) => `${row.file}:${row.source_row}`).join(", ") || "—",
-      finding: check.reason || "—",
-      policy: check.policy_clause || "—",
-    }));
     return `<article class="evidence-card scheme-review">
       <h3>${escapeHtml(item.target === item.quarter ? item.quarter : `${item.target} · ${item.quarter}`)} · circular ${escapeHtml((item.circulars || []).join(", "))}</h3>
       <div class="metric-grid">
@@ -406,8 +466,7 @@
         <div class="metric"><span>Orders below 1.5× average (policy wording)</span><strong>${escapeHtml(elig.lines_below)} / ${escapeHtml(elig.lines_checked)}</strong><span>${formatCompactInr(elig.free_value_below_inr)} free goods on them</span></div>
         <div class="metric"><span>Same, non-scheme purchases only</span><strong>${escapeHtml(elig.lines_below_non_scheme_reading)}</strong><span>${formatInr(elig.free_value_below_non_scheme_reading_inr)}. Policy does not define which; ask the client.</span></div>
       </div>
-      <h4>Scheme checks</h4>
-      ${renderTable(rows, [["check", "Check"], ["status", "Status"], ["source", "Source & row (top examples)"], ["finding", "Finding"], ["policy", "Policy"]], "No scheme checks were run.")}
+      ${renderChecksTable(checks, "Scheme checks")}
     </article>`;
   }
 
@@ -419,13 +478,6 @@
     const checks = item.checks || {};
     const short = checks.short_shelf_life || {};
     const block = checks.expiry_block || {};
-    const rows = Object.entries(checks).map(([key, check]) => ({
-      check: labelFor(key),
-      status: scalar(check.status).toUpperCase(),
-      source: (check.evidence_rows || []).map((row) => `${row.file}:${row.source_row}`).join(", ") || "—",
-      finding: check.reason || "—",
-      policy: check.policy_clause || "—",
-    }));
     const cfaRows = (item.by_cfa || []).map((c) => ({
       cfa: `${c.cfa} ${c.city}`, short: formatCompactInr(c.short_shelf_life_inr), block: formatCompactInr(c.block_inr),
       out: `${c.out_of_stock} / ${c.lines}`, above: `${c.above_norm} / ${c.lines}`,
@@ -450,25 +502,16 @@
       ${renderTable(cfaRows, [["cfa", "C&F"], ["short", "Below 60% norm"], ["block", "Write-off risk"], ["out", "Out of stock"], ["above", "Above 2 months"], ["fefo", "Dispatches skipping older stock"]], "No C&F rows.")}
       <h4>Batches most at risk</h4>
       ${renderTable(batchRows, [["batch", "Batch"], ["packs", "Packs at risk"], ["value", "₹ at PTS"], ["source", "Source & row"]], "No batch is at risk.")}
-      <h4>Stock checks</h4>
-      ${renderTable(rows, [["check", "Check"], ["status", "Status"], ["source", "Source & row"], ["finding", "Finding"], ["policy", "Policy"]], "No stock checks were run.")}
+      ${renderChecksTable(checks, "Stock checks")}
     </article>`;
   }
 
   function renderClaimReview(item) {
-    const checks = item.checks || {};
-    const rows = Object.entries(checks).map(([key, check]) => ({
-      check: labelFor(key),
-      status: scalar(check.status).toUpperCase(),
-      source: (check.evidence_rows || []).map((row) => `${row.file || "—"}:${row.source_row || "—"}`).join(", ") || "—",
-      finding: check.reason || "—",
-      policy: check.policy_clause || "—",
-    }));
+    const claimSource = (item.records && item.records.claim && `${item.records.claim.file}:${item.records.claim.source_row}`) || "expiry_claims.csv";
     return `<article class="evidence-card claim-review">
       <h3>Claim ${escapeHtml(item.claim_no || "not identified")}</h3>
-      ${item.at_stake_inr ? `<p class="at-stake">₹ at stake: ${formatInr(item.at_stake_inr)} <span class="muted">(${escapeHtml((item.records && item.records.claim && `${item.records.claim.file}:${item.records.claim.source_row}`) || "expiry_claims.csv")}, claim value or quantity × PTS)</span></p>` : ""}
-      <h4>Claims decision checks</h4>
-      ${renderTable(rows, [["check", "Check"], ["status", "Status"], ["source", "Source & row"], ["finding", "Finding"], ["policy", "Policy"]], "No claim checks were run.")}
+      ${item.at_stake_inr ? `<p class="at-stake">₹ at stake: ${formatInr(item.at_stake_inr)} <span class="muted">(claim value, or quantity × PTS · ${escapeHtml(claimSource)})</span></p>` : ""}
+      ${renderChecksTable(item.checks, "Claims decision checks")}
     </article>`;
   }
 
@@ -532,16 +575,21 @@
     return answer || "No answer was returned.";
   }
 
+  // Plain labels for the routes; they describe a recommendation, never a posted decision.
+  const ROUTES = {
+    RECOMMEND_CREDIT: { label: "Credit recommended", tone: "recommend", headline: "The checks support a credit." },
+    REJECT: { label: "Reject", tone: "reject", headline: "Recommend rejecting this claim." },
+    NEEDS_PERSON: { label: "Needs a person", tone: "review", headline: "A person needs to look at this before any credit." },
+    NOT_FOUND: { label: "Not found", tone: "review", headline: "Not found in the data, so there is nothing to check." },
+    SCHEME_NEEDS_REVIEW: { label: "Scheme: breaks policy", tone: "reject", headline: "This quarter's schemes broke the trade policy." },
+    SCHEME_WITHIN_POLICY: { label: "Scheme: within policy", tone: "recommend", headline: "This quarter's schemes stayed within the trade policy." },
+    STOCK_NEEDS_ACTION: { label: "Stock: needs action", tone: "reject", headline: "Some C&F stock needs action." },
+    STOCK_OK: { label: "Stock: OK", tone: "recommend", headline: "No stock problem found at this snapshot." },
+  };
+
   function resultBadge(evidence, route) {
     // Labels describe the result type; they are not business approval decisions.
-    if (route === "RECOMMEND_CREDIT") return { label: route.replaceAll("_", " "), tone: "recommend" };
-    if (route === "REJECT") return { label: route, tone: "reject" };
-    if (route === "NOT_FOUND") return { label: "NOT FOUND", tone: "review" };
-    if (route === "NEEDS_PERSON") return { label: "NEEDS PERSON", tone: "review" };
-    if (route === "SCHEME_NEEDS_REVIEW") return { label: "SCHEME NEEDS REVIEW", tone: "reject" };
-    if (route === "SCHEME_WITHIN_POLICY") return { label: "SCHEME WITHIN POLICY", tone: "recommend" };
-    if (route === "STOCK_NEEDS_ACTION") return { label: "STOCK NEEDS ACTION", tone: "reject" };
-    if (route === "STOCK_OK") return { label: "STOCK OK", tone: "recommend" };
+    if (ROUTES[route]) return { label: ROUTES[route].label, tone: ROUTES[route].tone };
     const item = Array.isArray(evidence) ? evidence.find((entry) => entry && typeof entry === "object") : null;
     if (!item) return null;
     if (item.result_type === "expiry_claim_review") return { label: "NEEDS HUMAN REVIEW", tone: "review" };
@@ -553,12 +601,88 @@
     return { label: "SOURCE EVIDENCE", tone: "informational" };
   }
 
+  function headline(route, evidence) {
+    const item = Array.isArray(evidence) ? evidence[0] : null;
+    if (route === "NOT_FOUND" && item) {
+      if (item.result_type === "scheme_review") return `${item.target || "That scheme or quarter"} is not in the scheme register or the sales data.`;
+      if (item.result_type === "stock_review") return `There is no stock snapshot for ${item.target || "that date"}.`;
+      return "This claim number is not in the claims register. Nothing was checked and no AI was used.";
+    }
+    return ROUTES[route] ? ROUTES[route].headline : "";
+  }
+
+  // Why: every check that did not pass, in plain words, with its rule.
+  function reasons(checks) {
+    return Object.entries(checks || {})
+      .filter(([, check]) => ["fail", "review", "missing"].includes(String(check.status || "").toLowerCase()))
+      .map(([key, check]) => ({
+        name: checkName(key), status: String(check.status).toLowerCase(),
+        text: formatNumbersInText(check.reason || ""), clause: check.policy_clause || "",
+      }));
+  }
+
+  // Next step: written by code for each route and failed check; the tool never posts anything.
+  const NEXT_FOR_CHECK = {
+    window: "Do not credit a claim filed outside the window (§5.2).",
+    duplicate: "Compare with the earlier claim on the same stockist and batch before crediting (§5.6).",
+    quantity: "Credit at most the packs actually invoiced to this stockist (§5.5).",
+    invoice_ref: "Get the original invoice number, or the stockist's purchase ledger with the Area Manager's written approval (§5.4).",
+    batch_expiry: "Check the expiry on the returned stock against the batch master.",
+    value: "Recalculate the value at PTS before any credit note (§5.7).",
+    pasted_fields: "The pasted details differ from the register: confirm them with the C&F.",
+    input_parse: "Ask the sender for the claim number, then search for it here.",
+    cap: "Get the CFO's approval for free goods above the 3% cap before the next scheme (§4.3–4.4).",
+    eligibility: "Give free goods only on orders of at least 1.5× the stockist's normal month (Annexure B).",
+    free_ratio: "Correct the lines that got more free packs than the scheme ratio.",
+    validity_window: "Stop free goods billed outside the scheme dates.",
+    sku_list: "Stop free goods on products not listed in the scheme circular.",
+    stock_norm: "Before offering a scheme, confirm the stockist holds under 2.5 months' stock (§4.5).",
+    short_shelf_life: "Dispatch the batches listed under 'Batches most at risk' first, before they fall below 60% shelf life.",
+    expiry_block: "Plan a return to the CDC or a write-off for batches near the 60-day block (needs your approval, §2.5).",
+    out_of_stock: "Top up the out-of-stock lines shown in 'By C&F'.",
+    above_norm: "Hold top-ups where cover is above 2 months.",
+    fefo_signal: "Ask the flagged C&F to check that its picking ships the oldest stock first (clause 6.3).",
+  };
+
+  function nextSteps(route, checks, evidence, options = {}) {
+    const item = Array.isArray(evidence) ? evidence[0] : null;
+    const failing = Object.entries(checks || {}).filter(([, c]) => ["fail", "review", "missing"].includes(String(c.status || "").toLowerCase()));
+    const fromChecks = failing.map(([key]) => NEXT_FOR_CHECK[key]).filter(Boolean);
+    if (route === "RECOMMEND_CREDIT") {
+      const amount = item && item.at_stake_inr ? ` for ${formatInr(item.at_stake_inr)}` : "";
+      return [`If you agree, raise the credit note${amount}. This tool does not post it.`];
+    }
+    if (route === "REJECT") {
+      const clauses = failing.filter(([, c]) => String(c.status).toLowerCase() === "fail").map(([, c]) => c.policy_clause).filter(Boolean);
+      return [`Do not raise a credit note. Reply to the C&F and the stockist citing ${[...new Set(clauses)].join(", ") || "the failed rule"}.`];
+    }
+    if (route === "NEEDS_PERSON") {
+      const email = Boolean(options.email);
+      return [...(email ? ["Treat the email as unverified: match it to a claim in the register first."] : []), ...(fromChecks.length ? fromChecks : ["Resolve the items above, then review the claim again."])];
+    }
+    if (route === "NOT_FOUND") return ["Check the number with the C&F, or search for the claim by stockist, product or batch."];
+    if (route === "SCHEME_WITHIN_POLICY" || route === "STOCK_OK") return ["No action needed."];
+    return fromChecks.length ? fromChecks : [];
+  }
+
+  function aiLabel(source) {
+    if (source === "model") return "Explanation · written by AI, then checked by code (no new numbers, no approval wording)";
+    if (source === "code") return "Explanation · written by code (the AI's text did not pass the checks, or the AI was unavailable)";
+    return "";
+  }
+
+  function usageText(modelCalls, seconds) {
+    const calls = Number(modelCalls) || 0;
+    const ai = calls === 0 ? "No AI used: code only" : calls === 1 ? "AI used once (to write the explanation)" : `AI used ${calls}× (to read your text and write the explanation)`;
+    return `${ai} · ${seconds ?? "—"} s`;
+  }
+
   // The pilot recommends; a named person in Commercial Finance decides and posts any credit.
   const DECISION_OWNER = "Commercial Finance claims team · owner Neha Bansal (Controller)";
 
   function decisionOwner(route) {
     if (route === "RECOMMEND_CREDIT") return `Recommendation only. Decides and raises the credit note: ${DECISION_OWNER}.`;
-    if (route === "REJECT") return `Recommendation only, under the clause shown below. Decides: ${DECISION_OWNER}.`;
+    if (route === "REJECT") return `Recommendation only, under the rule shown. Decides: ${DECISION_OWNER}.`;
     if (route === "NEEDS_PERSON") return `A person must review this before any credit. Decides: ${DECISION_OWNER}.`;
     if (route === "NOT_FOUND") return "Not found in the register or the extract; nothing to decide.";
     if (route === "STOCK_NEEDS_ACTION" || route === "STOCK_OK") {
@@ -570,7 +694,10 @@
     return "";
   }
 
-  const api = { answerSummary, attachStockFilters, decisionOwner, escapeHtml, labelFor, renderEvidence, resultBadge, stockRowMatches };
+  const api = {
+    aiLabel, answerSummary, attachSourceToggles, attachStockFilters, checkName, decisionOwner, escapeHtml, formatInr,
+    formatNumbersInText, headline, labelFor, nextSteps, reasons, renderEvidence, resultBadge, statusBadge, stockRowMatches, usageText,
+  };
   root.EvidenceFormatter = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 }(typeof window !== "undefined" ? window : globalThis));

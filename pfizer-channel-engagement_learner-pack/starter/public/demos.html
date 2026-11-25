@@ -3,16 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Project Sankalp · demo cases</title>
-<link rel="stylesheet" href="/style.css?v=15">
+<title>Pfizer · Project Sankalp copilot · demo cases</title>
+<link rel="stylesheet" href="/style.css?v=16">
 </head>
 <body>
 <main>
   <header class="page-header">
     <div>
-      <p class="eyebrow">PROJECT SANKALP · DEMO</p>
+      <p class="eyebrow">PFIZER · PROJECT SANKALP COPILOT · DEMO</p>
       <h1>Demo cases and the LangGraph flow</h1>
-      <p class="hint">Real records from the case files, each hand-checked in the check set. Run one to see the answer, its evidence and the route it took through the graph. <a href="/">← Back to the pilot</a></p>
+      <p class="hint">Real records from the case files, each hand-checked in the check set. Run one to see the answer, its evidence and the route it took through the graph. <span class="fiction">Fictional training case.</span> <a href="/">← Back to the copilot</a></p>
     </div>
     <div class="read-only" role="note">Read-only decision support · No ERP/WMS write-back · Human review required</div>
   </header>
@@ -23,7 +23,7 @@
       <div class="demo-list">
                 <article class="demo-case">
           <div><strong>CLM-2404-04177</strong><span>All checks pass</span><span class="demo-source">expiry_claims.csv:2</span></div>
-          <div class="demo-action"><span class="decision-badge recommend" data-expected="RECOMMEND_CREDIT">Expected: Recommend credit</span><button type="button" class="scenario-action" data-case="clean_01" data-demo="Review expiry claim CLM-2404-04177 and show its source evidence.">Run</button></div>
+          <div class="demo-action"><span class="decision-badge recommend" data-expected="RECOMMEND_CREDIT">Expected: Credit recommended</span><button type="button" class="scenario-action" data-case="clean_01" data-demo="Review expiry claim CLM-2404-04177 and show its source evidence.">Run</button></div>
         </article>
         <article class="demo-case">
           <div><strong>CLM-2605-04488</strong><span>Repeat of an earlier credited claim (§5.6)</span><span class="demo-source">expiry_claims.csv:3269, 3596</span></div>
@@ -55,11 +55,11 @@
         </article>
         <article class="demo-case">
           <div><strong>Scheme check FY25 Q3</strong><span>Free goods 4.95% of sales, above the 3% cap (§4.4); orders below the 1.5× minimum</span><span class="demo-source">primary_sales.csv (FY25 Q3)</span></div>
-          <div class="demo-action"><span class="decision-badge reject" data-expected="SCHEME_NEEDS_REVIEW">Expected: Scheme needs review</span><button type="button" class="scenario-action" data-case="scheme_cap_01" data-demo="Review quarter-end scheme FY25 Q3 against the policy.">Run</button></div>
+          <div class="demo-action"><span class="decision-badge reject" data-expected="SCHEME_NEEDS_REVIEW">Expected: Scheme: breaks policy</span><button type="button" class="scenario-action" data-case="scheme_cap_01" data-demo="Review quarter-end scheme FY25 Q3 against the policy.">Run</button></div>
         </article>
         <article class="demo-case">
           <div><strong>Stock view, latest snapshot</strong><span>Stock below the 60% shelf-life norm, Lucknow out of stock, Kolkata FEFO signal</span><span class="demo-source">cnf_stock_snapshot.csv:4783</span></div>
-          <div class="demo-action"><span class="decision-badge reject" data-expected="STOCK_NEEDS_ACTION">Expected: Stock needs action</span><button type="button" class="scenario-action" data-case="stock_latest_01" data-demo="Stock review for every C&amp;F.">Run</button></div>
+          <div class="demo-action"><span class="decision-badge reject" data-expected="STOCK_NEEDS_ACTION">Expected: Stock: needs action</span><button type="button" class="scenario-action" data-case="stock_latest_01" data-demo="Stock review for every C&amp;F.">Run</button></div>
         </article>
         <article class="demo-case">
           <div><strong>Free-text message, no claim ID</strong><span>Free text with no claim number: the model reads it into fields, then code sends it to a person</span><span class="demo-source">(model extraction; no register row)</span></div>
@@ -73,26 +73,31 @@
       <div id="out" class="result-area" hidden>
         <div class="answer-card">
           <div class="answer-heading">
-            <h3>Result</h3>
+            <h3 id="headline">Result</h3>
             <span id="decision-badge" class="decision-badge" hidden></span>
           </div>
+          <div id="why" class="result-block" hidden></div>
+          <div id="next" class="result-block next-step" hidden></div>
           <p id="decision-owner" class="decision-owner" hidden></p>
-          <p id="answer"></p>
+          <div id="ai-box" class="ai-box">
+            <p id="ai-label" class="ai-label" hidden></p>
+            <p id="answer"></p>
+          </div>
         </div>
-        <div id="flow" class="flow-wrap" hidden></div>
+          <div id="flow" class="flow-wrap" hidden></div>
         <h3>Evidence from the data</h3>
         <div id="evidence" class="evidence-list"></div>
         <details id="raw-details" class="raw-details">
-          <summary>View raw evidence</summary>
+          <summary>View raw evidence (JSON)</summary>
           <pre id="raw-evidence"></pre>
         </details>
       </div>
     </section>
   </div>
 </main>
-<script src="/evidence.js?v=19"></script>
-<script src="/progress.js?v=8"></script>
+<script src="/evidence.js?v=20"></script>
+<script src="/progress.js?v=9"></script>
 <script src="/flow.js?v=2"></script>
-<script src="/app.js?v=14"></script>
+<script src="/app.js?v=15"></script>
 </body>
 </html>

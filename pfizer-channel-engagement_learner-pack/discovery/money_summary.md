@@ -40,4 +40,4 @@
 1. **Headline "stopped": ₹19.94 L a year** (matches discovery's ₹20.25 L). **Headline "at risk": ₹86.26 L a year**, always labelled "to a person, not saved".
 2. **Never add across rows.** Claims, the expiry gap, schemes and the GST figure overlap: the same expired stock can appear in several.
 3. **Problems 1 and 2 are sized, not saved.** The pilot makes them visible and owned; recovering them needs Sales (cap and 1.5× rule) and Planning (C&F shares).
-4. **A forecast recovers 0% of the quantified rupees** (discovery §3). **Running cost:** ~$0.00016 a claim, **~$0.65 a year** (architecture §6).
+4. **A forecast recovers 0% of the quantified rupees** (discovery §2). **Running cost:** ~$0.00016 a claim, **~$0.65 a year** (architecture §6).

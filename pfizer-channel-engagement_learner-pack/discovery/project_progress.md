@@ -9,7 +9,14 @@
 - **Deployed:** https://project-pfizer.vercel.app (Vercel Hobby, auto-deploys from `master`). Region `bom1` confirmed live. The repo is private and still deploys (owner merges via PR, merge commit).
 - **First user: Commercial Finance claims executive** (owner Neha Bansal). The graph routes each claim to recommend credit, reject, needs a person, or not found. Code decides; the model only parses free text and explains.
 - **Accuracy:** check set **19/19** (16 claims + 3 scheme cases; baseline 6/16); held-out 3/6, then 6/6 after fixes built against those cases. `pytest -q`: **116 passed**. Batch mode: ₹19.94 L/yr credited leakage the rules stop. Scheme check: ₹1.58 cr/yr above cap.
-- **Second user** (Kavita Rao, Supply Chain) is optional and not yet built in the new graph.
+- **Second user** (Kavita Rao, Supply Chain): stock view built (section 4).
+
+## Update — 2026-11-25 (stock view)
+
+- **Changed:** built the stock view for problem 2 and the second user, Kavita Rao (`agent/stock.py`, `stock_review` node, page section 4). Fixed the scheme owner name (NSM is Arjun Sethi; Rohan Mehta is the CFO). Each page section shows its result in its own panel.
+- **Result:** at 30 Sep 2026, ₹2.06 cr will ship below the 60% shelf-life norm (₹1.22 cr at Kolkata), write-off risk ₹0; Lucknow out of stock on 23 of 36 SKUs; Kolkata skipped older stock on 82.9% of dispatches vs 28–35% elsewhere after its Feb 2026 WMS change (signal). Check set 21/21 live.
+- **Evidence/checks:** `pytest -q` 123 passed; Node tests 23/23; hand-checked stock case (cnf_stock_snapshot.csv:4783, batch_master.csv:491). All notes stay at 2 pages.
+- **Open items:** fresh held-out set; demo-case list; deck.
 
 ## Update — 2026-11-25 (scheme check)
 

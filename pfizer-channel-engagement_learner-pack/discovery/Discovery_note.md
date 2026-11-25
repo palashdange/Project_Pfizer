@@ -9,7 +9,7 @@ The CFO sees expiry returns rising and fill rates falling, and asks for an AI fo
 | Problem | Evidence | Owner | Our response |
 |---|---|---|---|
 | **1. Quarter-end scheme loading** pushes stock past what stockists sell; it expires and returns as claims 1–2 years later | Last-10-day pack share 20%→35% and FOC 1.2%→5.0% after v4.1 (15 Nov 2024); FOC above the 3% cap ₹1.58 cr/yr; expiry claims ₹1.46 cr/yr above the CFO's 1% target, now ~₹4 cr/yr (§2, §5) | Arjun Sethi (NSM, approves schemes); Rohan Mehta (CFO, cap exceptions); Commercial Finance checks cost (§4.3) | **Built:** scheme check per quarter (cap, 1.5× minimum order, terms). Free goods on orders below the minimum: ₹50.2 L–₹2.63 cr/yr. **Recommend:** enforce the cap and §4.5 stock norm |
-| **2. Stale C&F allocation** splits stock on last year's shares | CF-N02 Lucknow order share 15.3%→20.9%, fill 80.6%; CF-E01 Kolkata 17.9%→13.3% (§5) | Kavita Rao, Vaishali Kapoor | **Recommendation:** allocation review; expiry-risk view |
+| **2. Stale C&F allocation** splits stock on last year's shares | CF-N02 Lucknow order share 15.3%→20.9%, fill 80.6%; CF-E01 Kolkata 17.9%→13.3% (§5) | Kavita Rao, Vaishali Kapoor | **Built:** stock view per snapshot. At 30 Sep 2026 Lucknow is out of stock on 23 of 36 SKUs; ₹2.06 cr will ship below the 60% shelf-life norm, ₹1.22 cr at Kolkata, which skipped older stock on 83% of dispatches after its Feb 2026 WMS change (vs 28–35% elsewhere). **Recommend:** allocation review; check Kolkata's WMS picking rules |
 | **3. Weak claim checks** let invalid claims be credited | ₹20.25 L/yr outside window, repeat or over-quantity; ₹43.08 L/yr credited with no invoice reference; ₹36.1 L/yr credited with no recorded C&F verification (overlaps); 31 rejections in 30 months vs 532 the rules reject (§2; [research note §4](research_note.md)) | Neha Bansal | **Built:** the claims-check pilot |
 
 ## 2. Ranked recovery indicators (₹)
@@ -36,7 +36,7 @@ Rank 1 is the largest modeled expiry-target gap; it is not proven recoverable an
 
 **Secondary user:** Kavita Rao (Head of Supply Chain), reviewing expiry-risk batches and short CFAs ([interviews, p. 2](../data-pack/04_stakeholder_interview_notes.pdf)).
 
-**Plan for the money:** the pilot flags **₹20.25 L/yr** of invalid credits before the credit note (batch mode re-runs every register claim: ₹19.94 L/yr) and sends **₹43.08 L/yr** without an invoice reference to ledger and approval review, not automatic rejection. These are screens, not proven savings. For problem 1 the scheme check shows Commercial Finance and Rohan, each quarter, the free goods above the cap (₹1.58 cr/yr) and on orders below the 1.5× minimum; stopping them needs Sales to change practice. Problem 2 needs a planning change; its impact is unquantified.
+**Plan for the money:** the pilot flags **₹20.25 L/yr** of invalid credits before the credit note (batch mode re-runs every register claim: ₹19.94 L/yr) and sends **₹43.08 L/yr** without an invoice reference to ledger and approval review, not automatic rejection. These are screens, not proven savings. For problem 1 the scheme check shows Commercial Finance and Rohan, each quarter, the free goods above the cap (₹1.58 cr/yr) and on orders below the 1.5× minimum; stopping them needs Sales to change practice. For problem 2 the stock view shows Kavita, per snapshot, where stock is short and where it will age; fixing shares is a Demand Planning change.
 
 ## 5. Why it may be happening: observed signals
 

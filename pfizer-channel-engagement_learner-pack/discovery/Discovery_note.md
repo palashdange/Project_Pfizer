@@ -1,6 +1,6 @@
 # Pfizer domestic channel: discovery and pilot recommendation
 
-**Working note · 24 November 2026 · Fictional training case**
+**Working note · 25 November 2026 · Fictional training case**
 
 ## 1. The three problems
 
@@ -34,9 +34,9 @@ Rank 1 is the largest modeled expiry-target gap; it is not proven recoverable an
 
 **Primary user:** Commercial Finance claims executive; owner Neha Bansal (Controller). Weekly, review each claim and recommend credit, reject, or person review; Finance keeps decision authority. Her two-person team handles about 4,000 lines/year and cannot check every claim against billing history ([interviews, p. 2](../data-pack/04_stakeholder_interview_notes.pdf)).
 
-**Secondary user:** Kavita Rao (Head of Supply Chain), reviewing expiry-risk batches and short CFAs ([interviews, p. 2](../data-pack/04_stakeholder_interview_notes.pdf)).
+**Secondary user:** Kavita Rao (Head of Supply Chain), reviewing expiry-risk batches and short CFAs ([interviews, p. 2](../data-pack/04_stakeholder_interview_notes.pdf)); served by the pilot's stock view.
 
-**Plan for the money:** the pilot flags **₹20.25 L/yr** of invalid credits before the credit note (batch mode re-runs every register claim: ₹19.94 L/yr) and sends **₹43.08 L/yr** without an invoice reference to ledger and approval review, not automatic rejection. These are screens, not proven savings. For problem 1 the scheme check shows Commercial Finance and Rohan, each quarter, the free goods above the cap (₹1.58 cr/yr) and on orders below the 1.5× minimum; stopping them needs Sales to change practice. For problem 2 the stock view shows Kavita, per snapshot, where stock is short and where it will age; fixing shares is a Demand Planning change.
+**Plan for the money:** the pilot flags **₹20.25 L/yr** of invalid credits before the credit note (batch mode re-runs every register claim: ₹19.94 L/yr) and sends **₹86.26 L/yr** of credits that fail a check to a person, including ₹43.08 L/yr without an invoice reference for ledger and approval review; at risk, not saved. These are screens, not proven savings. For problem 1 the scheme check shows Commercial Finance, Arjun Sethi (NSM) and Rohan Mehta (CFO), each quarter, the free goods above the cap (₹1.58 cr/yr) and on orders below the 1.5× minimum; stopping them needs Sales to change practice. For problem 2 the stock view shows Kavita, per snapshot, where stock is short and where it will age; fixing shares is a Demand Planning change.
 
 ## 5. Why it may be happening: observed signals
 
@@ -55,7 +55,7 @@ Quarter-end share is invoiced + free packs in the final 10 days ÷ quarter packs
 | FY27 Q1 | 30.64% | 3.69% |
 | FY27 Q2* | 27.84% | 2.82% |
 
-**For Rohan’s “show me if schemes hurt us”:** FY25 Q2→Q3 late-quarter packs rose 21.17%→35.35% and FOC 1.25%→4.95%; FOC stayed above 3% in later full quarters, while the QBR says exceptions were CFO-approved—evidence of scheme-loading risk, not causation (QBR, pp. 1–2). Ludhiana voice notes also report Monte-LC excess after a 10+2 offer alongside Amox-Clav shortages, qualitative only ([voice-note log](voice_note_evidence_log.md#aud-20261001-wa0004--scheme-stock-and-shortage-in-ludhiana)).
+**For Rohan’s “show me if schemes hurt us”:** FY25 Q2→Q3 late-quarter packs rose 21.17%→35.35% and FOC 1.25%→4.95%; FOC stayed above 3% in later full quarters, while the QBR says exceptions were CFO-approved—evidence of scheme-loading risk, not causation (QBR, pp. 1–2). Approving the Q2 FY27 exception on 25 Aug 2026, Rohan wrote: "Approved, last time. I want to see the expiry impact before December" ([inbox, p. 4](../data-pack/05_inbox_export.pdf)). Ludhiana voice notes also report Monte-LC excess after a 10+2 offer alongside Amox-Clav shortages, qualitative only ([voice-note log](voice_note_evidence_log.md#aud-20261001-wa0004--scheme-stock-and-shortage-in-ludhiana)).
 
 CFA share is share of FY ordered packs. First group split-batch rows by invoice/date/CFA/stockist/SKU. [sizing.py](sizing.py) reports uncapped fill: `sum(invoiced + free) / sum(ordered)`; the comparison caps each grouped order at 100%: `sum(min(invoiced + free, ordered)) / sum(ordered)`. FY25 is **100.00% under both methods**: all 33,916 recorded groups match ordered quantity. The billed extract omits orders with no invoice.
 
@@ -72,7 +72,7 @@ Uncapped fill including free packs matches QBR FY26 Q1–Q4 and FY27 Q1 to round
 
 ## 6. Open questions
 
-1. What is the CFO’s 1% numerator/denominator, and how should FY27 Q1 claims reconcile: QBR ₹1.415 cr / 2.75% vs extract ₹1.354 cr / 2.64%?
+1. What is the CFO’s 1% numerator/denominator, and how should FY27 Q1 claims reconcile: QBR ₹1.41 cr / 2.75% (p. 2) vs extract ₹1.354 cr / 2.64%?
 2. Can Finance link claims to invoices, credit notes, payments, recoveries, and reversals to establish avoidable leakage?
 3. Can Planning provide allocation versions/approvals and the demand evidence used for CFA shares?
 4. Can the case provide non-invoiced orders, order status, sell-through, stock on hand, and final human-review ownership?

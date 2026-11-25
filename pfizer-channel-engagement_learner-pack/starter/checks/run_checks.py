@@ -17,7 +17,7 @@ from agent.graph import run_question  # noqa: E402
 
 
 CHECK_SET = Path(__file__).with_name("check_set.csv")
-HOLDOUT_PREFIX = "holdout_"
+HOLDOUT_PREFIX = "holdout"  # holdout_ = round 1, holdout2_ = round 2 (drawn at random, labelled before running)
 ALLOWED_EXPECTED_ROUTES = {
     "RECOMMEND_CREDIT",
     "REJECT",
@@ -69,7 +69,7 @@ def main() -> int:
     """Run each case independently and compare the graph's explicit route."""
     cases = load_cases()
     passed = 0
-    holdout_total = holdout_passed = 0
+    rounds: dict[str, list[int]] = {}
 
     for case in cases:
         try:
@@ -83,8 +83,10 @@ def main() -> int:
         is_pass = observed == case["expected_route"]
         # Held-out cases were labelled after the graph was built; score them apart.
         if case["case_id"].startswith(HOLDOUT_PREFIX):
-            holdout_total += 1
-            holdout_passed += int(is_pass)
+            name = case["case_id"].split("_", 1)[0]
+            score = rounds.setdefault(name, [0, 0])
+            score[0] += int(is_pass)
+            score[1] += 1
         else:
             passed += int(is_pass)
         status = "PASS" if is_pass else "FAIL"
@@ -93,13 +95,15 @@ def main() -> int:
             f"observed={observed} ({detail})"
         )
 
-    main_total = len(cases) - holdout_total
+    main_total = len(cases) - sum(total for _, total in rounds.values())
     print(
         f"Claims review graph: {passed}/{main_total} passed "
         f"({passed / main_total:.1%})."
     )
-    if holdout_total:
-        print(f"Held-out cases: {holdout_passed}/{holdout_total} passed (reported separately).")
+    labels = {"holdout": "Held-out round 1 (fixes were later built against these)",
+              "holdout2": "Held-out round 2 (random draw, labelled before running)"}
+    for name, (ok, total) in sorted(rounds.items()):
+        print(f"{labels.get(name, name)}: {ok}/{total} passed (reported separately).")
     return 0 if passed == main_total else 1
 
 

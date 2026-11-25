@@ -18,9 +18,9 @@ test("weekly review page exposes read-only status and supported checks", () => {
   assert.match(html, /1\. Claim review · Commercial Finance claims triage/);
   assert.doesNotMatch(html, /Local demo|scenario replay/);
   assert.match(html, /href="\/demos"/);
-  assert.match(html, /id="flow"/);
-  assert.match(html, /id="scheme-flow"/);
-  assert.match(html, /id="stock-flow"/);
+  // The LangGraph flow is shown only on /demos, not on the pilot page.
+  assert.doesNotMatch(html, /flow-wrap|flow\.js/);
+  assert.match(fs.readFileSync(path.join(__dirname, "../public/demos.html"), "utf8"), /id="flow"[^>]*flow-wrap|class="flow-wrap"[^>]*id="flow"|id="flow" class="flow-wrap"/);
   // Each section shows its result inside its own card, directly below its controls.
   const claimCard = html.slice(html.indexOf('aria-labelledby="question-heading"'), html.indexOf('aria-labelledby="batch-heading"'));
   assert.match(claimCard, /id="out"/);

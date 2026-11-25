@@ -13,7 +13,7 @@
 
 ## Update — 2026-11-25 (demos and graph flow)
 
-- **Changed:** new `/demos` page with 11 hand-checked cases (8 claims, scheme FY25 Q3, stock latest, free text), each showing its expected result. `run_question` returns the LangGraph node trace; `flow.js` draws the whole graph as inline SVG and replays the route (model nodes yellow, checks coloured by result). Every result panel on the main page shows its flow. Demo list moved off the main page.
+- **Changed:** new `/demos` page with 11 hand-checked cases (8 claims, scheme FY25 Q3, stock latest, free text), each showing its expected result. `run_question` returns the LangGraph node trace; `flow.js` draws the whole graph as inline SVG and replays the route (model nodes yellow, checks coloured by result). The flow is shown only on /demos, not on the pilot page. Demo list moved off the main page.
 - **Evidence/checks:** browser run of all 11 demos at 390 px: 11/11 match their expected result. `pytest -q` 125 passed; Node tests 26/26; check set 22 cases (free_text_01 added).
 - **Open items:** fresh held-out set; model timeout; PDFs; deck.
 

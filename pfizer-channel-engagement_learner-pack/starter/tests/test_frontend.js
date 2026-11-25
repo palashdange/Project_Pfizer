@@ -14,13 +14,13 @@ test("weekly review page exposes read-only status and supported checks", () => {
   assert.match(html, /No ERP\/WMS write-back/);
   assert.match(html, /Human review required/);
   assert.match(html, /evidence\.js\?v=19/);
-  assert.match(html, /app\.js\?v=13/);
+  assert.match(html, /app\.js\?v=14/);
   assert.match(html, /1\. Claim review · Commercial Finance claims triage/);
-  assert.match(html, /Demo cases · one per outcome/);
   assert.doesNotMatch(html, /Local demo|scenario replay/);
-  assert.equal((html.match(/class="demo-case"/g) || []).length, 8);
-  assert.match(html, /expiry_claims\.csv:3269, 3596/);
-  assert.match(html, /claim_emails\.csv:28/);
+  assert.match(html, /href="\/demos"/);
+  assert.match(html, /id="flow"/);
+  assert.match(html, /id="scheme-flow"/);
+  assert.match(html, /id="stock-flow"/);
   // Each section shows its result inside its own card, directly below its controls.
   const claimCard = html.slice(html.indexOf('aria-labelledby="question-heading"'), html.indexOf('aria-labelledby="batch-heading"'));
   assert.match(claimCard, /id="out"/);
@@ -30,9 +30,8 @@ test("weekly review page exposes read-only status and supported checks", () => {
   const batchCard = html.slice(html.indexOf('aria-labelledby="batch-heading"'), html.indexOf('aria-labelledby="scheme-heading"'));
   assert.match(batchCard, /id="batch-out"/);
   assert.match(html, /id="decision-badge"/);
-  assert.match(app, /querySelectorAll\("\[data-question\]"\)/);
-  assert.match(app, /button\.dataset\.question/);
-  assert.match(app, /form\.requestSubmit\(\)/);
+  assert.match(app, /querySelectorAll\("\[data-demo\]"\)/);
+  assert.match(app, /FlowView\.render/);
   assert.match(fs.readFileSync(path.join(__dirname, "../public/evidence.js"), "utf8"), /attachStockFilters/);
 });
 
@@ -409,7 +408,7 @@ test("write-off tile says None with the nearest batch when nothing will be block
 });
 
 test("every demo case runs a check-set input and shows the check set's expected route", () => {
-  const html = fs.readFileSync(path.join(__dirname, "../public/index.html"), "utf8");
+  const html = fs.readFileSync(path.join(__dirname, "../public/demos.html"), "utf8");
   const csv = fs.readFileSync(path.join(__dirname, "../checks/check_set.csv"), "utf8");
   const unquote = (v) => v.replace(/^"|"$/g, "").replace(/""/g, '"');
   const expected = {};
@@ -420,11 +419,31 @@ test("every demo case runs a check-set input and shows the check set's expected 
     expected[id] = { input, route };
   }
   const decode = (v) => v.replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&amp;/g, "&");
-  const rows = [...html.matchAll(/data-expected="([A-Z_]+)">[^<]*<\/span><button[^>]*data-case="([^"]+)" data-question="([^"]+)"/g)];
-  assert.equal(rows.length, 8);
+  const rows = [...html.matchAll(/data-expected="([A-Z_]+)">[^<]*<\/span><button[^>]*data-case="([^"]+)" data-demo="([^"]+)"/g)];
+  assert.equal(rows.length, 11);
   for (const [, route, caseId, question] of rows) {
     assert.ok(expected[caseId], `${caseId} is in the check set`);
     assert.equal(route, expected[caseId].route, caseId);
     assert.ok(decode(question).includes(expected[caseId].input), `${caseId} runs its check-set input`);
+  }
+});
+
+test("flow view groups the parallel checks into one step and colours checks by result", () => {
+  const FlowView = require("../public/flow.js");
+  const trace = ["parse_input", "lookup", "dispatch_checks", "check_window", "check_quantity", "check_value", "decide", "explain"];
+  assert.deepEqual(FlowView.stepsFor(trace), [["parse_input"], ["lookup"], ["dispatch_checks"],
+    ["check_window", "check_quantity", "check_value"], ["decide"], ["explain"]]);
+  assert.equal(FlowView.statusClass("fail"), "fail");
+  assert.equal(FlowView.statusClass("missing"), "review");
+  assert.equal(FlowView.parseUsedModel({ trace: ["parse_input", "explain"], model_calls: 2 }), true);
+  assert.equal(FlowView.parseUsedModel({ trace: trace, model_calls: 1 }), false);
+  // Every node of the graph is drawn, and every edge joins two drawn nodes.
+  const svg = FlowView.svgMarkup();
+  for (const node of ["parse_input", "lookup", "scheme_review", "stock_review", "decide", "explain", "NOT_FOUND"]) {
+    assert.match(svg, new RegExp(`data-node="${node}"`));
+  }
+  for (const edge of Object.keys(FlowView.EDGES)) {
+    const [a, b] = edge.split(">");
+    assert.ok(FlowView.NODES[a] && FlowView.NODES[b], edge);
   }
 });

@@ -705,7 +705,7 @@ def review_claim(claim_no: str) -> dict:
 def run_question(question: str) -> dict:
     """Run one input and return the structured route, checks, evidence, and timings."""
     started = time.perf_counter()
-    final = graph.invoke({
+    initial = {
         "input_text": question,
         "claim_no": "",
         "email_id": "",
@@ -718,7 +718,15 @@ def run_question(question: str) -> dict:
         "elapsed_seconds": 0.0,
         "scheme_target": "",
         "stock_target": "",
-    })
+    }
+    # Record the nodes in the order LangGraph ran them, so the page can replay the real route.
+    trace: list[str] = []
+    final: dict = {}
+    for mode, chunk in graph.stream(initial, stream_mode=["updates", "values"]):
+        if mode == "values":
+            final = chunk
+        else:
+            trace.extend(node for node in chunk if not node.startswith("__"))
     elapsed = time.perf_counter() - started
     return {
         "route": final.get("route", "NEEDS_PERSON"),
@@ -728,4 +736,5 @@ def run_question(question: str) -> dict:
         "answer": final.get("explanation", ""),
         "model_calls": final.get("model_calls", 0),
         "elapsed_seconds": round(elapsed, 3),
+        "trace": trace,
     }

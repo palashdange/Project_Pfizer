@@ -17,9 +17,9 @@ agent/prompts.py  the two prompts (field extraction, explanation)
 agent/llm.py      the only file that knows the model provider (OpenRouter)
 agent/tools.py    earlier tool-loop functions; tested but not wired into the graph
 data/             the case CSVs
-public/           index.html, app.js, evidence.js, progress.js, batch.js, style.css
+public/           index.html, demos.html, app.js, evidence.js, flow.js, progress.js, batch.js, style.css
 tests/            pytest (no API key needed) and Node frontend tests
-checks/           check_set.csv (21 hand-checked incl. 3 scheme and 2 stock cases + 6 held-out) and run_checks.py
+checks/           check_set.csv (22 hand-checked incl. 3 scheme, 2 stock, 1 free-text + 6 held-out) and run_checks.py
 AGENTS.md         instructions for the coding agent
 vercel.json       region bom1; keeps tests and local files out of the bundle
 ```

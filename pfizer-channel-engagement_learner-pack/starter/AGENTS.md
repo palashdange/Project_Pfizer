@@ -30,4 +30,4 @@ python checks/run_checks.py
 uvicorn app:app --reload
 
 ## Current task
-Fresh held-out set (5–6 claims and 1–2 scheme quarters, labelled by hand before running), then UI polish (plain CSS only): one-click demo cases per outcome instead of the old replay box, readable claim column in the batch table, mobile layout. Done means pytest, the Node tests and the check set stay green, and the page works on a phone that has never opened it.
+Fresh held-out set (5–6 claims, 1 scheme quarter, 1 stock date), labelled by hand before running and scored separately. Then a 20 s model timeout with one retry and a test. `/demos` holds the one-per-outcome cases; a test ties each to its check-set row, so add new demo cases to the check set first.

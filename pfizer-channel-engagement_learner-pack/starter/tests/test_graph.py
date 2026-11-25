@@ -331,3 +331,21 @@ def test_unknown_stock_snapshot_is_not_found_without_a_model_call(monkeypatch):
 
     assert result["route"] == "NOT_FOUND" and result["model_calls"] == 0
     assert "30-09-2026" in result["evidence"][0]["available_snapshots"]
+
+
+def test_trace_records_the_route_through_the_graph(monkeypatch):
+    monkeypatch.setattr(graph_module, "get_llm", lambda: ExplainOnlyLLM())
+
+    claim = graph_module.run_question("Review CLM-2404-04177")
+    missing = graph_module.run_question("Review CLM-0000-00000")
+    scheme = graph_module.run_question("FY25 Q3")
+    stock = graph_module.run_question("Stock review")
+
+    assert claim["trace"][:3] == ["parse_input", "lookup", "dispatch_checks"]
+    assert claim["trace"][-2:] == ["decide", "explain"]
+    assert {n for n in claim["trace"] if n.startswith("check_")} == {
+        "check_window", "check_quantity", "check_duplicate", "check_invoice_ref",
+        "check_batch_expiry", "check_value", "check_pasted_fields"}
+    assert missing["trace"] == ["parse_input", "lookup"]
+    assert scheme["trace"] == ["parse_input", "scheme_review", "explain"]
+    assert stock["trace"] == ["parse_input", "stock_review", "explain"]

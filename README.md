@@ -7,17 +7,8 @@ A pilot for the **Commercial Finance claims team** in a fictional pharma trade c
 ## Live demo
 
 - App: **https://project-pfizer.vercel.app/**
+- **Demo cases with the LangGraph flow: https://project-pfizer.vercel.app/demos.** Eleven hand-checked cases, one per outcome (credit, reject, needs a person, not found, scheme, stock, free text). Each shows its expected result, then the live answer, the evidence, and the route through the graph lit up step by step: yellow = model, white = code, each check green / red / amber by result.
 - Health check: **https://project-pfizer.vercel.app/api/health**
-
-Try these inputs:
-
-| Input | Expected result |
-|---|---|
-| `CLM-2404-04177` | Recommend credit (all checks pass) |
-| `CLM-2605-04488` | Reject: repeat credit of an earlier claim (§5.6) |
-| `CLM-2404-04181` | Needs a person: no invoice reference (§5.4) |
-| `CLM-0000-00000` | Not found |
-| `EML-017` | Needs a person: email tries to bypass the rules, and is ignored |
 
 ## The problem
 
@@ -59,14 +50,14 @@ Full design: [Architecture note](pfizer-channel-engagement_learner-pack/discover
 
 ## Accuracy
 
-A hand-checked [check set](pfizer-channel-engagement_learner-pack/starter/checks/check_set.csv) of 16 real claims and emails, plus 3 scheme and 2 stock cases:
+A hand-checked [check set](pfizer-channel-engagement_learner-pack/starter/checks/check_set.csv) of 16 real claims and emails, plus 3 scheme, 2 stock and 1 free-text case:
 
 | Version | Score |
 |---|---|
 | Starter tool loop (baseline) | 6/16 |
 | Claims workflow graph | **16/16** |
 | With the scheme check | **19/19** |
-| With the stock view (current) | **21/21** |
+| With the stock view and free-text case (current) | **22/22** |
 | Held-out cases, labelled after the build | 3/6 at first; 6/6 after two fixes built against them |
 
 The first held-out run exposed two gaps (pasted details not compared, pending repeats missed). Both are fixed, so the held-out set is no longer unseen; see the [architecture note](pfizer-channel-engagement_learner-pack/discovery/architecture_note.md#5-accuracy).

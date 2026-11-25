@@ -1,17 +1,8 @@
 // Calls the FastAPI backend. Same origin, so no CORS setup is needed.
+// Used by the pilot page (/) and the demo page (/demos); each element is optional.
 const form = document.getElementById("ask");
 const questionInput = document.getElementById("q");
-const askButton = form.querySelector("button");
-
-// Presets and historical scenario replays share the same evidence-backed API flow.
-document.querySelectorAll("[data-question]").forEach((button) => {
-  button.addEventListener("click", () => {
-    questionInput.value = button.dataset.question || "";
-    form.requestSubmit();
-    // Demo cases sit above the result panel; bring the result into view on small screens.
-    document.getElementById("status").scrollIntoView({ behavior: "smooth", block: "start" });
-  });
-});
+const askButton = form ? form.querySelector("button") : null;
 
 // Each section owns a result panel; ids share a prefix ("" for claims, "scheme-" for schemes).
 function panel(prefix) {
@@ -19,7 +10,7 @@ function panel(prefix) {
   return {
     status: get("status"), output: get("out"), answer: get("answer"), decisionBadge: get("decision-badge"),
     decisionOwner: get("decision-owner"), evidence: get("evidence"), rawEvidence: get("raw-evidence"),
-    rawDetails: get("raw-details"),
+    rawDetails: get("raw-details"), flow: get("flow"),
   };
 }
 
@@ -57,6 +48,8 @@ async function askAndRender(question, ui, controls) {
     EvidenceFormatter.attachStockFilters(ui.evidence);
     ui.rawEvidence.textContent = evidence.length ? JSON.stringify(evidence, null, 2) : "No tool was called.";
     ui.output.hidden = false;
+    // Replay the route the request took through the LangGraph graph.
+    if (ui.flow && window.FlowView) FlowView.render(ui.flow, data);
     ui.status.textContent = `${data.model_calls} model call(s) · ${data.elapsed_seconds ?? "—"} seconds`;
   } catch (err) {
     ui.status.textContent = `Something went wrong: ${err.message}. Check /api/health and the logs.`;
@@ -66,10 +59,21 @@ async function askAndRender(question, ui, controls) {
   }
 }
 
-form.addEventListener("submit", (e) => {
-  e.preventDefault();
-  const question = questionInput.value.trim();
-  if (question) askAndRender(question, panel(""), [questionInput, askButton]);
+if (form) {
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const question = questionInput.value.trim();
+    if (question) askAndRender(question, panel(""), [questionInput, askButton]);
+  });
+}
+
+// Demo page: each case runs its check-set input into the single result panel.
+const demoButtons = [...document.querySelectorAll("[data-demo]")];
+demoButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    askAndRender(button.dataset.demo, panel(""), demoButtons);
+    document.getElementById("status").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 });
 
 // Scheme check: same graph, result shown in the scheme section's own panel.

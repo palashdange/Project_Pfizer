@@ -11,6 +11,12 @@
 - **Accuracy:** check set **19/19** (16 claims + 3 scheme cases; baseline 6/16); held-out 3/6, then 6/6 after fixes built against those cases. `pytest -q`: **116 passed**. Batch mode: ₹19.94 L/yr credited leakage the rules stop. Scheme check: ₹1.58 cr/yr above cap.
 - **Second user** (Kavita Rao, Supply Chain): stock view built (section 4).
 
+## Update — 2026-11-25 (demos and graph flow)
+
+- **Changed:** new `/demos` page with 11 hand-checked cases (8 claims, scheme FY25 Q3, stock latest, free text), each showing its expected result. `run_question` returns the LangGraph node trace; `flow.js` draws the whole graph as inline SVG and replays the route (model nodes yellow, checks coloured by result). Every result panel on the main page shows its flow. Demo list moved off the main page.
+- **Evidence/checks:** browser run of all 11 demos at 390 px: 11/11 match their expected result. `pytest -q` 125 passed; Node tests 26/26; check set 22 cases (free_text_01 added).
+- **Open items:** fresh held-out set; model timeout; PDFs; deck.
+
 ## Update — 2026-11-25 (stock view)
 
 - **Changed:** built the stock view for problem 2 and the second user, Kavita Rao (`agent/stock.py`, `stock_review` node, page section 4). Fixed the scheme owner name (NSM is Arjun Sethi; Rohan Mehta is the CFO). Each page section shows its result in its own panel.

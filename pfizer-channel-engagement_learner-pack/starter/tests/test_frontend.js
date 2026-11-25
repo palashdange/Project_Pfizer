@@ -14,11 +14,13 @@ test("weekly review page exposes read-only status and supported checks", () => {
   assert.match(html, /No ERP\/WMS write-back/);
   assert.match(html, /Human review required/);
   assert.match(html, /evidence\.js\?v=19/);
-  assert.match(html, /app\.js\?v=12/);
-  assert.match(html, /Review a claim/);
-  assert.match(html, /Inspect a claim email/);
-  assert.match(html, /Tuesday claims review · scenario replay/);
+  assert.match(html, /app\.js\?v=13/);
   assert.match(html, /1\. Claim review · Commercial Finance claims triage/);
+  assert.match(html, /Demo cases · one per outcome/);
+  assert.doesNotMatch(html, /Local demo|scenario replay/);
+  assert.equal((html.match(/class="demo-case"/g) || []).length, 8);
+  assert.match(html, /expiry_claims\.csv:3269, 3596/);
+  assert.match(html, /claim_emails\.csv:28/);
   // Each section shows its result inside its own card, directly below its controls.
   const claimCard = html.slice(html.indexOf('aria-labelledby="question-heading"'), html.indexOf('aria-labelledby="batch-heading"'));
   assert.match(claimCard, /id="out"/);
@@ -27,12 +29,7 @@ test("weekly review page exposes read-only status and supported checks", () => {
   assert.match(schemeCard, /id="scheme-decision-badge"/);
   const batchCard = html.slice(html.indexOf('aria-labelledby="batch-heading"'), html.indexOf('aria-labelledby="scheme-heading"'));
   assert.match(batchCard, /id="batch-out"/);
-  assert.match(html, /not a live inbox or pending-claims queue/);
-  assert.match(html, /expiry_claims\.csv rows 3269 and 3596/);
-  assert.match(html, /claim_emails\.csv row 28/);
-  assert.equal((html.match(/class="scenario-action"/g) || []).length, 2);
   assert.match(html, /id="decision-badge"/);
-  assert.equal((html.match(/class="quick-action"/g) || []).length, 3);
   assert.match(app, /querySelectorAll\("\[data-question\]"\)/);
   assert.match(app, /button\.dataset\.question/);
   assert.match(app, /form\.requestSubmit\(\)/);
@@ -409,4 +406,25 @@ test("write-off tile says None with the nearest batch when nothing will be block
   assert.match(none, /Nearest: K2400123 at CF-W01, 41 days from its block date/);
   const some = renderEvidence({ ...base, checks: { expiry_block: { status: "fail", value_inr: "1183870.50", evidence_rows: [] } } });
   assert.match(some, /₹11\.84 L/);
+});
+
+test("every demo case runs a check-set input and shows the check set's expected route", () => {
+  const html = fs.readFileSync(path.join(__dirname, "../public/index.html"), "utf8");
+  const csv = fs.readFileSync(path.join(__dirname, "../checks/check_set.csv"), "utf8");
+  const unquote = (v) => v.replace(/^"|"$/g, "").replace(/""/g, '"');
+  const expected = {};
+  for (const line of csv.split("\n").slice(1)) {
+    const cells = line.match(/("([^"]|"")*"|[^,]*)(,|$)/g);
+    if (!cells || cells.length < 3) continue;
+    const [id, input, route] = cells.slice(0, 3).map((c) => unquote(c.replace(/,$/, "")));
+    expected[id] = { input, route };
+  }
+  const decode = (v) => v.replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&amp;/g, "&");
+  const rows = [...html.matchAll(/data-expected="([A-Z_]+)">[^<]*<\/span><button[^>]*data-case="([^"]+)" data-question="([^"]+)"/g)];
+  assert.equal(rows.length, 8);
+  for (const [, route, caseId, question] of rows) {
+    assert.ok(expected[caseId], `${caseId} is in the check set`);
+    assert.equal(route, expected[caseId].route, caseId);
+    assert.ok(decode(question).includes(expected[caseId].input), `${caseId} runs its check-set input`);
+  }
 });

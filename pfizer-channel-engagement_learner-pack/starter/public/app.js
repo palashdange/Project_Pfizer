@@ -8,6 +8,8 @@ document.querySelectorAll("[data-question]").forEach((button) => {
   button.addEventListener("click", () => {
     questionInput.value = button.dataset.question || "";
     form.requestSubmit();
+    // Demo cases sit above the result panel; bring the result into view on small screens.
+    document.getElementById("status").scrollIntoView({ behavior: "smooth", block: "start" });
   });
 });
 

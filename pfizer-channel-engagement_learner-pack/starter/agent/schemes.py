@@ -86,6 +86,22 @@ def _previous_months(table: dict, line: dict) -> list[Decimal]:
     return months
 
 
+@lru_cache(maxsize=1)
+def _first_month() -> tuple[int, int]:
+    first = min(line["date"] for line in _order_lines())
+    return first.year, first.month
+
+
+def _lookback_before_extract(line: dict) -> bool:
+    """True when a lookback month falls before the extract starts (counted as zero, so unknown)."""
+    year, month = line["date"].year, line["date"].month
+    for _ in range(SCHEME_LOOKBACK_MONTHS):
+        month -= 1
+        if month == 0:
+            year, month = year - 1, 12
+    return (year, month) < _first_month()
+
+
 def available_quarters() -> list[str]:
     return sorted({"FY%02d Q%d" % fiscal_quarter_of(line["date"]) for line in _order_lines()})
 
@@ -144,6 +160,7 @@ def review_scheme(target: str) -> Optional[dict]:
             below.append(line)
         if scheme_order_eligibility(order, _previous_months(plain, line))["status"] == "below_threshold":
             below_plain.append(line)
+    partial = [l for l in scheme_lines if _lookback_before_extract(l) and l not in below]
     below_value = sum((l["free_value"] for l in below), Decimal("0"))
     plain_value = sum((l["free_value"] for l in below_plain), Decimal("0"))
     scheme_value = sum((l["free_value"] for l in scheme_lines), Decimal("0"))
@@ -152,11 +169,13 @@ def review_scheme(target: str) -> Optional[dict]:
         f"{len(below)} of {len(scheme_lines)} order lines with free goods were below 1.5 x the stockist's 3-month "
         f"average purchase; free goods on them {_money(below_value)} of {_money(scheme_value)}. "
         f"Counting only non-scheme purchases: {len(below_plain)} lines, {_money(plain_value)}. "
-        f"{len(no_history)} line(s) had no purchase history to judge.",
+        f"{len(no_history)} line(s) had no purchase history to judge."
+        + (f" {len(partial)} passing line(s) look back before the extract starts (missing months counted as zero), "
+           "so their pass is not certain; a below result stays valid." if partial else ""),
         SCHEME_TERMS_POLICY_CLAUSE, sorted(below, key=lambda l: -l["free_value"]),
         lines_checked=len(scheme_lines), lines_below=len(below), free_value_below_inr=_money(below_value),
         lines_below_non_scheme_reading=len(below_plain), free_value_below_non_scheme_reading_inr=_money(plain_value),
-        lines_without_history=len(no_history),
+        lines_without_history=len(no_history), passing_lines_with_partial_history=len(partial),
     )
 
     outside, wrong_sku, over_ratio = [], [], []

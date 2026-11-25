@@ -80,10 +80,30 @@
     <p id="batch-status" class="hint status" role="status" aria-live="polite"></p>
     <div id="batch-out" hidden></div>
   </section>
+  <section class="input-card batch-card" aria-labelledby="scheme-heading">
+    <h2 id="scheme-heading">3. Scheme check · quarter-end schemes</h2>
+    <p class="hint">For Commercial Finance's scheme cost check and the National Sales Manager (CO-POL-014 §4.3). Checks a quarter against the §4.4 3% cap and Annexure B (1.5× minimum order, validity window, SKU list, free ratio), in code. §4.5 stock norm cannot be checked: no secondary sales data.</p>
+    <div class="batch-controls">
+      <label class="sr-only" for="scheme-target">Quarter</label>
+      <select id="scheme-target">
+        <option value="FY27 Q2">FY27 Q2 · all schemes</option>
+        <option value="FY27 Q1">FY27 Q1 · all schemes</option>
+        <option value="FY26 Q4">FY26 Q4 · all schemes</option>
+        <option value="FY26 Q3">FY26 Q3 · all schemes</option>
+        <option value="FY26 Q2">FY26 Q2 · all schemes</option>
+        <option value="FY26 Q1">FY26 Q1 · all schemes</option>
+        <option value="FY25 Q4">FY25 Q4 · all schemes</option>
+        <option value="FY25 Q3">FY25 Q3 · all schemes</option>
+        <option value="FY25 Q2">FY25 Q2 · all schemes</option>
+        <option value="FY25 Q1">FY25 Q1 · all schemes</option>
+      </select>
+      <button type="button" id="scheme-run">Check schemes</button>
+    </div>
+  </section>
 </main>
-<script src="/evidence.js?v=13"></script>
+<script src="/evidence.js?v=15"></script>
 <script src="/progress.js?v=6"></script>
-<script src="/app.js?v=9"></script>
+<script src="/app.js?v=10"></script>
 <script src="/batch.js?v=2"></script>
 </body>
 </html>

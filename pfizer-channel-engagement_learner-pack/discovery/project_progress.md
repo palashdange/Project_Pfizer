@@ -11,6 +11,13 @@
 - **Accuracy:** check set **16/16** (baseline 6/16); held-out 3/6, then 6/6 after fixes built against those cases. `pytest -q`: **108 passed**. Batch mode: ₹19.94 L/yr credited leakage the rules stop.
 - **Second user** (Kavita Rao, Supply Chain) is optional and not yet built in the new graph.
 
+## Update — 2026-11-25
+
+- **Changed:** the discovery note opens with a "three problems" table: scheme loading, stale allocation and weak claim checks, each with evidence, owner and response (built or recommended). The research note gains §4 on the C&F claim process and where its checks break. `sizing.py` adds `calculate_register_controls`, with a test.
+- **Result:** 458 of 4,112 credited claims have no recorded C&F verification (₹36.1 L/yr, overlapping other screens); 31 rejections in 30 months against 532 the rules reject; every C&F verifies 82–94% on time against a 95% target; the C&F is paid INR 45 per claim line.
+- **Evidence/checks:** `python discovery/sizing.py` (215 rows; earlier rows unchanged); `pytest discovery/test_sizing.py` 10 passed. The discovery and research notes each stay at 2 pages.
+- **Open items:** the pilot builds problem 3 only; problems 1 and 2 are recommendations unless the scheme check or Supply Chain view is built.
+
 ## Update — 2026-11-24 (night, batch mode)
 
 - **Changed:** duplicate check now sends pending and near-equal repeats to a person (exact credited repeats still reject). Pasted claim details are compared with the register in code. Added batch mode (`POST /api/batch`, `agent/batch.py`, page section 2, ₹ at stake per claim). Indexed data lookups (full-register run ≈25 s, previously over 5 min).

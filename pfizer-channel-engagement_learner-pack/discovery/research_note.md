@@ -2,7 +2,7 @@
 
 **Working note · 24 November 2026 · Fictional training case; the laws cited are real and were read at source**
 
-This note explains *why* the problems in the [discovery note](Discovery_note.md) happen, using how the Indian pharma trade channel works and the laws the case pack cites by number. Each law was read on the official site; the version and date are in §4. Where a source could not be reached from this environment, §5 says so.
+This note explains *why* the problems in the [discovery note](Discovery_note.md) happen, using how the Indian pharma trade channel works and the laws the case pack cites by number. Each law was read on the official site; the version and date are in §5. Where a source could not be reached from this environment, §6 says so.
 
 ## 1. How the channel works
 
@@ -33,19 +33,33 @@ This note explains *why* the problems in the [discovery note](Discovery_note.md)
 1. **Quarter-end schemes push stock past what stockists sell.** After the v4.1 change (15 Nov 2024), quarter-end packs went from about 20% to 35% of each quarter and free goods from 1.2% to 5.0% of sales, against a 3% cap. The policy's own stock norm (§4.5: no more than 2.5 months' average secondary stock) cannot be checked, because secondary sales are not received. Stock beyond sell-through ages in the stockist's warehouse.
 2. **The law forces that stock back as claims.** Under D&C Act §18 and §33(2)(h), expired stock cannot be sold, so ageing stock returns 1–2 years later as NE or expiry claims. That is the lag seen between scheme loading (FY25 Q3) and rising expiry claims (FY26–FY27).
 3. **Each late claim costs more than its PTS.** Most expiry credit notes are issued after the CGST §34(2) window, so the GST on them may not be recoverable (§2).
-4. **Claim checks are weaker than the records allow.** Rule 65 requires batch-wise records at every licensed wholesaler, and CGST §34 ties every credit note to an invoice. Yet ₹43.08 L/yr is credited without an invoice reference, and duplicate and out-of-window claims are credited. A two-person team cannot check 4,000 lines against billing history (interviews p. 2); code can.
+4. **Claim checks are weaker than the records allow.** Rule 65 requires batch-wise records at every licensed wholesaler, and CGST §34 ties every credit note to an invoice. Yet invalid claims pass both the C&F and Finance (§4 below). A two-person team cannot check 4,000 lines against billing history (interviews p. 2); code can.
 5. **None of these is a forecasting error.** The national forecast feeds a fixed allocation split (interviews p. 3). The research supports the discovery verdict: fix scheme loading, allocation and claim checks, not the forecast.
 
-## 4. Sources read (accessed 24 Nov 2026)
+## 4. What the C&F does with a claim, and where the checks break
+
+The C&F is paid to receive, store, pick and dispatch stock, and to "receive and process returns and claims" (C&F agreement SC-AGR-CF-003, clause 1.1). For a claim it must log it with a `CLM-` number, check the §5 window, invoice reference and quantity, search for an earlier claim on the same stockist and batch, verify the stock physically within 10 working days and **record the result in the remarks column**, then send it to Finance (Schedule 2 §2.6). Finance consolidates the registers monthly and raises the credit note (interviews p. 2). The register shows where this breaks:
+
+| Signal | Evidence | Source |
+|---|---|---|
+| Checks rarely stop a claim | **31 rejections in 30 months**, all "Duplicate of earlier claim"; the pilot's rules reject 532 | `expiry_claims.csv` status and remarks; batch mode |
+| Verification often not recorded | **458 of 4,112 credited claims have blank remarks** (₹36.1 L/yr), each with a verifier's name | `expiry_claims.csv`; `sizing.py` `calculate_register_controls` |
+| No-invoice claims waved through | 798 credited without an invoice reference, with remarks "Party says invoice misplaced" (285), "Inv ref missing, verified on batch" (257), "accepted on stockist ledger" (256) | `expiry_claims.csv` |
+| Verification late at every C&F | 82%–94% of claims verified within 10 working days in Q1 FY27, against a 95% target (CF-E01 Kolkata lowest) | C&F agreement Schedule 4 and annexure, p. 4 |
+| Paid for volume, not quality | INR 45 per claim line processed; nothing for a claim correctly rejected | Clause 5.1, p. 2 |
+
+The last point is a reasoned incentive, not a proven cause. Together they explain why a second, independent check before Finance credits is worth having, and why the check could later run at the C&F itself.
+
+## 5. Sources read (accessed 24 Nov 2026)
 
 | Document | Official source | Version read |
 |---|---|---|
 | Drugs and Cosmetics Act 1940 and Rules 1945 | India Code, `indiacode.gov.in`, handle 123456789/507619 (MoHFW consolidated PDF) | As amended up to 31 Dec 2016 |
 | Central Goods and Services Tax Act 2017 | India Code, handle 123456789/550806 (Gazette of India, 12 Apr 2017) | As enacted |
 | Drugs (Prices Control) Order 2013 | NPPA, `nppa.gov.in/en/drugspricescontrolorder2013`: consolidated text and amendment S.O. 3516(E) | As amended up to S.O. 2324(E), 25 May 2023, plus S.O. 3516(E), 30 Jun 2026 |
-| CO-POL-014 v4.2, C&F agreement, interviews, QBR | Case data pack, docs 02, 03, 04, 06 | As supplied |
+| CO-POL-014 v4.2, C&F agreement SC-AGR-CF-003, interviews, QBR | Case data pack, docs 02, 03, 04, 06 | As supplied |
 
-## 5. Not verified from here
+## 6. Not verified from here
 
 - **CGST §34(2) time limit after 2022.** The as-enacted text says "September following the end of the financial year". The Finance Act 2022 changed this to 30 November; the amended text sits on CBIC's tax-information portal, which failed TLS checks from this environment. The figures in §2 use 30 November (the later date, so the smaller share); under the as-enacted text the share is 68%.
 - **D&C Rules after 2016.** The India Code consolidation runs to 31 Dec 2016. Rule 65 should be checked for later amendments.
@@ -53,6 +67,6 @@ This note explains *why* the problems in the [discovery note](Discovery_note.md)
 - **NPPA's March 2026 WPI notification** (cited in doc 1) was not found on NPPA's 2026 pages.
 - **AIOCD trade norms on expiry returns.** No official AIOCD source was located.
 
-## 6. Reproduce
+## 7. Reproduce
 
 The GST timing numbers come from `starter/data/expiry_claims.csv` (status Credited, `credit_note_date`, `credit_value_inr`) joined on `original_invoice_ref` to `primary_sales.csv` (`invoice_date`). A credit note counts as late when its date is after 30 November following the 31 March that ends the invoice's financial year. Annualised over the 30 months of claims data.

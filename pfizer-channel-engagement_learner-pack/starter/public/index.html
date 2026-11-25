@@ -20,7 +20,7 @@
   <section class="input-card" aria-labelledby="question-heading">
     <h2 id="question-heading">1. Claim review · Commercial Finance claims triage</h2>
     <p class="hint">Enter a claim number, paste claim details, or inspect an email ID. The copilot does not issue credit notes.</p>
-    <p class="demo-link"><a href="/demos">See the demo cases with the LangGraph flow →</a></p>
+    <p class="demo-link"><a href="/demos">See the demo cases and the LangGraph flow →</a></p>
     <form id="ask">
       <label class="sr-only" for="q">Ask about a claim</label>
       <input id="q" placeholder="For example: Review claim CLM-2605-04488 or inspect EML-017." autocomplete="off">
@@ -36,7 +36,6 @@
         <p id="decision-owner" class="decision-owner" hidden></p>
         <p id="answer"></p>
       </div>
-      <div id="flow" class="flow-wrap" hidden></div>
       <h3>Evidence from the data</h3>
       <div id="evidence" class="evidence-list"></div>
       <details id="raw-details" class="raw-details">
@@ -86,7 +85,6 @@
         <p id="scheme-decision-owner" class="decision-owner" hidden></p>
         <p id="scheme-answer"></p>
       </div>
-      <div id="scheme-flow" class="flow-wrap" hidden></div>
       <h3>Evidence from the data</h3>
       <div id="scheme-evidence" class="evidence-list"></div>
       <details id="scheme-raw-details" class="raw-details">
@@ -128,7 +126,6 @@
         <p id="stock-decision-owner" class="decision-owner" hidden></p>
         <p id="stock-answer"></p>
       </div>
-      <div id="stock-flow" class="flow-wrap" hidden></div>
       <h3>Evidence from the data</h3>
       <div id="stock-evidence" class="evidence-list"></div>
       <details id="stock-raw-details" class="raw-details">
@@ -140,7 +137,6 @@
 </main>
 <script src="/evidence.js?v=19"></script>
 <script src="/progress.js?v=8"></script>
-<script src="/flow.js?v=2"></script>
 <script src="/app.js?v=14"></script>
 <script src="/batch.js?v=2"></script>
 </body>

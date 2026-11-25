@@ -5,10 +5,10 @@
 ## The answer in brief
 
 - **The CFO asked for an AI forecasting tool. Our view: it would not recover this money.** His concern is real: expiry returns rose from under 1% to about 3% of sales, while the North runs short (CFO email, overview Appendix A). But the national forecast is not the cause. The money is lost after the forecast, in three places.
-- Three problems: 
+- Three problems:
   - **Quarter-end schemes push more stock than stockists can sell.**
-  - **Stock is split across the C&Fs (regional warehouses) on last year's shares**
-  - **Invalid claims are credited without proper checks**
+  - **Stock is split across the C&Fs (regional warehouses) on last year's shares.**
+  - **Invalid claims are credited without proper checks.**
 - **What we built instead:** one read-only tool. It checks every claim before credit (**₹19.94 lakh a year stopped**, **₹86.26 lakh a year sent to a person**), checks each quarter's schemes against the policy, and shows where C&F stock is short or ageing. A named person makes every decision.
 
 ## 1. The three problems, ranked by money
@@ -58,7 +58,9 @@ Ranked by the money involved each year. Rank 1 is money already spent; ranks 2 a
 We built the claim check first: its rules are exact, the money is provable, and its owner asked for it. Ranks 1 and 2 are larger, but recovering them needs Sales and Planning to change practice; the tool makes them visible and owned. Every figure and its source: [money summary](money_summary.md).
 
 ## 4. Open questions for the client
+
 Each figure below depends on information the client has and we do not. For each question: what we asked, why, and what changes with the answer.
+
 1. **How is the CFO's 1% target measured?** For FY27 Q1 expiry claims, the QBR gives ₹1.41 crore (2.75% of sales; QBR p.2) and the extract gives ₹1.354 crore (2.64%). *With the answer:* we restate the ₹1.46 crore a year above target on his definition.
 2. **Can Finance link each claim to its invoice, CN, payment and any reversal?** We can see a claim was credited, not whether the money was later recovered. *With the answer:* the ₹86.26 lakh a year "at risk" becomes proven loss or recovery.
 3. **Can Planning share the C&F allocation sheets, their approvals and the demand behind them?** We inferred stale shares from order patterns (table B) but have not seen the sheets. *With the answer:* we show how far each C&F's share is from its demand, and what the reset should be.

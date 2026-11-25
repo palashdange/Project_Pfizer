@@ -13,7 +13,7 @@ A pilot for the **Commercial Finance claims team** in a fictional pharma trade c
 ## The problem
 
 - **Expiry claims are above the CFO's 1% target.** The gap is about ₹1.46 cr a year averaged over 30 months, and ₹1.99 cr in the first half of FY27 alone. Quarter-end schemes and a stale allocation split are the main causes.
-- **Claim controls leak money.** Two people settle about 4,000 claims a year without checking billing history. Per year: ₹43 lakh credited with no invoice reference, ₹15.7 lakh outside the policy window, ₹4.5 lakh in repeat credits.
+- **Claim controls leak money.** Two people settle about 4,000 claims a year without checking billing history. Per year: ₹15.7 lakh credited outside the policy window and ₹4.5 lakh in repeat credits (stopped by the rules), plus ₹43 lakh credited with no invoice reference (at risk: sent to a person, not counted as saved).
 - **A new forecast tool isn't the fix.** The national forecast is stable; the losses come from schemes, allocation and claim checks.
 
 Details, methods and source rows: [Discovery note](pfizer-channel-engagement_learner-pack/discovery/Discovery_note.md).
@@ -21,7 +21,8 @@ Details, methods and source rows: [Discovery note](pfizer-channel-engagement_lea
 ## Users
 
 1. **Claims executive, Commercial Finance** (owner: Neha Bansal, Controller). Each week: credit, reject, or send each claim in the register to a person.
-2. **Head of Supply Chain** (Kavita Rao). Which batches are at expiry risk, and which C&Fs are short. Planned second view.
+2. **Commercial Finance with the National Sales Manager** (Arjun Sethi) **and the CFO** (Rohan Mehta). Each quarter: check the quarter-end schemes against the 3% cap and the 1.5× minimum order (section 3 of the page).
+3. **Head of Supply Chain** (Kavita Rao). Each month-end: which batches are at expiry risk, and which C&Fs are short or ageing (section 4 of the page).
 
 ## How it works
 
@@ -29,7 +30,13 @@ Details, methods and source rows: [Discovery note](pfizer-channel-engagement_lea
 flowchart TD
     S([START]) --> P[parse_input]
     P -->|claim or email found| L[lookup]
+    P -->|scheme or quarter named| SR[scheme_review]
+    P -->|stock review asked| ST[stock_review]
     P -->|nothing to look up| E[explain]
+    SR -->|not found| X2([END: NOT_FOUND])
+    ST -->|not found| X2
+    SR --> E
+    ST --> E
     L -->|claim not found| X([END: NOT_FOUND])
     L --> D[dispatch_checks]
     D --> C1[check_window §5.2]
@@ -38,11 +45,13 @@ flowchart TD
     D --> C4[check_invoice_ref §5.4]
     D --> C5[check_batch_expiry]
     D --> C6[check_value §5.7]
-    C1 & C2 & C3 & C4 & C5 & C6 --> DEC[decide]
+    D --> C7[check_pasted_fields]
+    C1 & C2 & C3 & C4 & C5 & C6 & C7 --> DEC[decide]
     DEC --> E
     E --> Z([END])
 ```
 
+- **Claims** run seven checks in parallel; `check_pasted_fields` compares details pasted in an email with the register. **Schemes** and **stock** take their own branch and never touch the claim checks. Batch mode runs the same claim checks with no model calls.
 - **Code does every rule, date, join and sum**, and decides the route. Policy numbers live in [`config.py`](pfizer-channel-engagement_learner-pack/starter/config.py) with their clause references.
 - **The model only** reads messy claim emails into fixed fields and writes a plain-language explanation of the result. It never approves a claim or invents a number.
 
@@ -106,7 +115,7 @@ Deployed on Vercel (Hobby) with root directory `pfizer-channel-engagement_learne
 | `pfizer-channel-engagement_learner-pack/discovery/decision_log.md` | Design choices and why |
 | `pfizer-channel-engagement_learner-pack/discovery/sizing.py` | Reproduces every ₹ figure (writes `sizing_results.csv`) |
 | `pfizer-channel-engagement_learner-pack/starter/` | The app: FastAPI, LangGraph graph, frontend |
-| `pfizer-channel-engagement_learner-pack/starter/agent/` | `graph.py`, `batch.py`, `rules.py`, `data.py`, `prompts.py`, `llm.py` |
+| `pfizer-channel-engagement_learner-pack/starter/agent/` | `graph.py` (the workflow), `rules.py` (policy rules), `schemes.py` (scheme check), `stock.py` (stock view), `batch.py` (batch mode), `data.py`, `tools.py`, `prompts.py`, `llm.py` |
 | `pfizer-channel-engagement_learner-pack/starter/tests/` | Tests for rules, data, graph and API |
 | `pfizer-channel-engagement_learner-pack/starter/checks/` | Check set and runner |
 | `pfizer-channel-engagement_learner-pack/data-pack/` | The client documents, CSV extracts and voice notes |

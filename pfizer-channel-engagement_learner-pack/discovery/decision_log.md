@@ -94,4 +94,14 @@ Each entry records the selected direction, the main alternative, the rationale, 
 **Why we chose this:** An over-quantity claim (§5.5) is invalid only for its excess packs; counting the whole claim gives ₹42.0 L/yr instead of ₹19.94 L/yr. The leakage figure reconciles to discovery/sizing.py (₹20.25 L/yr); the small gap is claims the pilot sends to a person because the batch or invoice is missing.
 **Evidence:** starter/agent/batch.py; tests/test_batch.py; discovery/sizing_results.csv.
 
+**19. Decision:** Build a quarter-end scheme check for Commercial Finance and the National Sales Manager, as a branch of the same graph.
+**Options considered:** recommend only vs. pre-approval what-if (needs a forecast) vs. quarter review on actual sales.
+**Why we chose this:** Scheme loading is the largest driver found (problem 1), and §4.3 already makes Commercial Finance the cost check. A quarter review uses only the extract, so every number has a source row; a what-if would need the forecast we argue against. Code checks the cap and Annexure B terms; the model only explains.
+**Evidence:** CO-POL-014 §4.2–4.5, Annexure B pp.5–6; starter/agent/schemes.py; tests/test_rules.py, tests/test_graph.py; check set scheme_cap_01, scheme_eligibility_01, scheme_not_found_01.
+
+**20. Decision:** Read Annexure B's "average monthly purchase" as all purchases (the policy wording), and report the non-scheme-only reading as a range.
+**Options considered:** all purchases vs. non-scheme purchases only vs. no pass/fail.
+**Why we chose this:** The policy does not define it, and the choice moves free goods on ineligible orders from ₹50.2 L to ₹2.63 cr a year. Using the wording keeps us faithful to the document, showing both keeps us honest, and the question goes to the client. Months before the extract count as zero, so a pass that relies on them is flagged as uncertain.
+**Evidence:** Annexure B p.5; discovery/Discovery_note.md open question 5; starter/agent/schemes.py.
+
 PDF page references checked against the source PDFs on 24 Nov 2026. Code, Markdown, and CSV references checked directly.

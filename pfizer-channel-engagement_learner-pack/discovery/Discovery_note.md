@@ -8,7 +8,7 @@ The CFO sees expiry returns rising and fill rates falling, and asks for an AI fo
 
 | Problem | Evidence | Owner | Our response |
 |---|---|---|---|
-| **1. Quarter-end scheme loading** pushes stock past what stockists sell; it expires and returns as claims 1–2 years later | Last-10-day pack share 20%→35% and FOC 1.2%→5.0% after v4.1 (15 Nov 2024); FOC above the 3% cap ₹1.58 cr/yr; expiry claims ₹1.46 cr/yr above the CFO's 1% target, now ~₹4 cr/yr (§2, §5) | Rohan Mehta, Arjun Sethi; Commercial Finance checks scheme cost (§4.3) | **Recommendation:** enforce the §4.4 cap and §4.5 stock norm |
+| **1. Quarter-end scheme loading** pushes stock past what stockists sell; it expires and returns as claims 1–2 years later | Last-10-day pack share 20%→35% and FOC 1.2%→5.0% after v4.1 (15 Nov 2024); FOC above the 3% cap ₹1.58 cr/yr; expiry claims ₹1.46 cr/yr above the CFO's 1% target, now ~₹4 cr/yr (§2, §5) | Rohan Mehta, Arjun Sethi; Commercial Finance checks scheme cost (§4.3) | **Built:** scheme check per quarter (cap, 1.5× minimum order, terms). Free goods on orders below the minimum: ₹50.2 L–₹2.63 cr/yr. **Recommend:** enforce the cap and §4.5 stock norm |
 | **2. Stale C&F allocation** splits stock on last year's shares | CF-N02 Lucknow order share 15.3%→20.9%, fill 80.6%; CF-E01 Kolkata 17.9%→13.3% (§5) | Kavita Rao, Vaishali Kapoor | **Recommendation:** allocation review; expiry-risk view |
 | **3. Weak claim checks** let invalid claims be credited | ₹20.25 L/yr outside window, repeat or over-quantity; ₹43.08 L/yr credited with no invoice reference; ₹36.1 L/yr credited with no recorded C&F verification (overlaps); 31 rejections in 30 months vs 532 the rules reject (§2; [research note §4](research_note.md)) | Neha Bansal | **Built:** the claims-check pilot |
 
@@ -36,7 +36,7 @@ Rank 1 is the largest modeled expiry-target gap; it is not proven recoverable an
 
 **Secondary user:** Kavita Rao (Head of Supply Chain), reviewing expiry-risk batches and short CFAs ([interviews, p. 2](../data-pack/04_stakeholder_interview_notes.pdf)).
 
-**Plan for the money:** the pilot flags **₹20.25 L/yr** of invalid credits before the credit note (batch mode re-runs every register claim: ₹19.94 L/yr) and sends **₹43.08 L/yr** without an invoice reference to ledger and approval review, not automatic rejection. These are screens, not proven savings. Problems 1 and 2 are larger but need policy and planning changes; their impact is unquantified.
+**Plan for the money:** the pilot flags **₹20.25 L/yr** of invalid credits before the credit note (batch mode re-runs every register claim: ₹19.94 L/yr) and sends **₹43.08 L/yr** without an invoice reference to ledger and approval review, not automatic rejection. These are screens, not proven savings. For problem 1 the scheme check shows Commercial Finance and Rohan, each quarter, the free goods above the cap (₹1.58 cr/yr) and on orders below the 1.5× minimum; stopping them needs Sales to change practice. Problem 2 needs a planning change; its impact is unquantified.
 
 ## 5. Why it may be happening: observed signals
 
@@ -76,5 +76,6 @@ Uncapped fill including free packs matches QBR FY26 Q1–Q4 and FY27 Q1 to round
 2. Can Finance link claims to invoices, credit notes, payments, recoveries, and reversals to establish avoidable leakage?
 3. Can Planning provide allocation versions/approvals and the demand evidence used for CFA shares?
 4. Can the case provide non-invoiced orders, order status, sell-through, stock on hand, and final human-review ownership?
+5. Annexure B's "average monthly purchase over the previous three months": all purchases, or only non-scheme purchases? It moves free goods on ineligible orders from ₹50.2 L to ₹2.63 cr a year.
 
 **Reproduce:** from the learner-pack root run `python discovery/sizing.py` and `pytest discovery/test_sizing.py`; script writes [sizing_results.csv](sizing_results.csv) and prints driver tables. `*` = FY27 H1 through 30 Sep 2026.

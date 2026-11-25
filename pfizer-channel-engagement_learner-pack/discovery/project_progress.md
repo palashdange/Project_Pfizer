@@ -8,8 +8,15 @@
 
 - **Deployed:** https://project-pfizer.vercel.app (Vercel Hobby, auto-deploys from `master`). Region `bom1` confirmed live. The repo is private and still deploys (owner merges via PR, merge commit).
 - **First user: Commercial Finance claims executive** (owner Neha Bansal). The graph routes each claim to recommend credit, reject, needs a person, or not found. Code decides; the model only parses free text and explains.
-- **Accuracy:** check set **16/16** (baseline 6/16); held-out 3/6, then 6/6 after fixes built against those cases. `pytest -q`: **108 passed**. Batch mode: ₹19.94 L/yr credited leakage the rules stop.
+- **Accuracy:** check set **19/19** (16 claims + 3 scheme cases; baseline 6/16); held-out 3/6, then 6/6 after fixes built against those cases. `pytest -q`: **116 passed**. Batch mode: ₹19.94 L/yr credited leakage the rules stop. Scheme check: ₹1.58 cr/yr above cap.
 - **Second user** (Kavita Rao, Supply Chain) is optional and not yet built in the new graph.
+
+## Update — 2026-11-25 (scheme check)
+
+- **Changed:** built the scheme check for problem 1 (`agent/schemes.py`, `scheme_review` node, page section 3): §4.4 cap, Annexure B 1.5× minimum order, validity window, SKU list, free ratio; §4.5 stock norm shown as not checkable. Three hand-checked scheme cases added to the check set.
+- **Result:** check set 19/19 with the live model. Above-cap free goods ₹1.58 cr/yr (matches `sizing.py`); free goods on orders below the 1.5× minimum ₹50.2 L–₹2.63 cr/yr, depending on how "average monthly purchase" is read (open question for the client).
+- **Evidence/checks:** `pytest -q` 116 passed; Node tests 22/22; quarter FOC percentages match the discovery note's table exactly. All three notes stay at 2 pages.
+- **Open items:** fresh held-out set; demo-case list; UI polish; deck.
 
 ## Update — 2026-11-25
 

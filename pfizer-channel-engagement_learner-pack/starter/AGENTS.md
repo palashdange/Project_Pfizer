@@ -6,7 +6,7 @@ Read this file before every task. Keep it short and keep it true.
 Project Sankalp is a read-only claims-screening pilot for the Commercial Finance claims executive (owner: Neha Bansal, Controller) in a fictional pharma channel. Each week the executive decides, for every claim in the register, whether to credit it, reject it, or send it to a person. Today a two-person team settles about 4,000 claims a year without checking billing history. This tool checks each claim against policy CO-POL-014 and the case CSVs and returns a route (`RECOMMEND_CREDIT`, `REJECT`, `NEEDS_PERSON`, `NOT_FOUND`), with the clause and the source rows behind it. A person still makes the final decision.
 
 ## Architecture
-`agent/graph.py`: `parse_input → lookup → dispatch_checks → [check_window §5.2, check_quantity §5.5, check_duplicate §5.6, check_invoice_ref §5.4, check_batch_expiry, check_value §5.7, check_pasted_fields §5.3] → decide → explain`. `review_graph` is the same without parse and explain; `agent/batch.py` uses it for `POST /api/batch`. A claim that isn't found ends after `lookup`; free text with no claim goes straight to `explain`.
+`agent/graph.py`: `parse_input → lookup → dispatch_checks → [check_window §5.2, check_quantity §5.5, check_duplicate §5.6, check_invoice_ref §5.4, check_batch_expiry, check_value §5.7, check_pasted_fields §5.3] → decide → explain`. `review_graph` is the same without parse and explain; `agent/batch.py` uses it for `POST /api/batch`. A quarter ("FY27 Q1") or scheme code ("QS-FY27Q1-A") goes from `parse_input` to `scheme_review` (`agent/schemes.py`, code) → `explain`. A claim that isn't found ends after `lookup`; free text with no claim goes straight to `explain`.
 
 - **Model nodes:** `parse_input` (only for free text: no `CLM-`/`EML-` ID, or an ID plus pasted details; structured output into `ClaimExtraction`, which has no decision field) and `explain` (3–5 sentences, guarded; it falls back to code text).
 - **Code nodes:** everything else. `decide` priority: fail on window/duplicate/quantity → REJECT; email input → NEEDS_PERSON; any other fail, review or missing → NEEDS_PERSON; otherwise RECOMMEND_CREDIT.
@@ -30,4 +30,4 @@ python checks/run_checks.py
 uvicorn app:app --reload
 
 ## Current task
-UI polish (plain CSS only): readable claim column in the batch table, route badges, mobile layout, and a fresh held-out set (the first six now pass after fixes built against them, so they no longer count as unseen). Done means pytest, the Node tests and the check set stay green, and the page works on a phone that has never opened it.
+Fresh held-out set (5–6 claims and 1–2 scheme quarters, labelled by hand before running), then UI polish (plain CSS only): one-click demo cases per outcome instead of the old replay box, readable claim column in the batch table, mobile layout. Done means pytest, the Node tests and the check set stay green, and the page works on a phone that has never opened it.

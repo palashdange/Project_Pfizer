@@ -13,8 +13,8 @@ test("weekly review page exposes read-only status and supported checks", () => {
   assert.match(html, /Read-only decision support/);
   assert.match(html, /No ERP\/WMS write-back/);
   assert.match(html, /Human review required/);
-  assert.match(html, /evidence\.js\?v=13/);
-  assert.match(html, /app\.js\?v=9/);
+  assert.match(html, /evidence\.js\?v=15/);
+  assert.match(html, /app\.js\?v=10/);
   assert.match(html, /Review a claim/);
   assert.match(html, /Inspect a claim email/);
   assert.match(html, /Tuesday claims review · scenario replay/);
@@ -339,4 +339,30 @@ test("batch month table shows 15 claims up front and the rest behind a toggle", 
   const html = renderBatch({ months: 1, claims, annualised_inr: {}, period_inr: {}, route_counts: {} });
   assert.match(html, /Show the other 5 claims/);
   assert.equal((html.match(/<tr>\s*<td>CLM-/g) || []).length, 20);
+});
+
+test("scheme review shows cap, eligibility range, cited checks, and who decides", () => {
+  const html = renderEvidence({
+    result_type: "scheme_review", found: true, target: "FY25 Q3", quarter: "FY25 Q3", circulars: ["SC/24/12"],
+    checks: {
+      cap: { status: "fail", reason: "4.95% of primary sales", policy_clause: "CO-POL-014 §4.4", foc_pct: "4.95", foc_value_inr: "27982869.90", sales_value_inr: "565208856.80", above_cap_inr: "11026604.20", evidence_rows: [{ file: "primary_sales.csv", source_row: 12345 }] },
+      eligibility: { status: "fail", reason: "below 1.5x", policy_clause: "CO-POL-014 §4.2; Annexure B", lines_checked: 1266, lines_below: 399, free_value_below_inr: "3876209.30", lines_below_non_scheme_reading: 335, free_value_below_non_scheme_reading_inr: "2426782.00", evidence_rows: [] },
+      stock_norm: { status: "missing", reason: "Cannot be checked", policy_clause: "CO-POL-014 §4.5", evidence_rows: [] },
+    },
+  });
+  assert.match(html, /4\.95%/);
+  assert.match(html, /399 \/ 1266/);
+  assert.match(html, /ask the client/);
+  assert.match(html, /primary_sales\.csv:12345/);
+  assert.match(html, /§4\.5/);
+  assert.deepEqual(resultBadge([], "SCHEME_NEEDS_REVIEW"), { label: "SCHEME NEEDS REVIEW", tone: "reject" });
+  assert.match(decisionOwner("SCHEME_NEEDS_REVIEW"), /Rohan Mehta/);
+  assert.match(renderEvidence({ result_type: "scheme_review", found: false, target: "FY23 Q1", available_quarters: ["FY25 Q1"] }), /not found/);
+});
+
+test("scheme answers use the model explanation, never the old batch template", () => {
+  const item = { result_type: "scheme_review", found: true, target: "FY25 Q3", route: "SCHEME_NEEDS_REVIEW" };
+  assert.equal(answerSummary("Free goods were above the cap.", [item]), "Free goods were above the cap.");
+  assert.match(answerSummary("", [item]), /FY25 Q3 was checked/);
+  assert.match(answerSummary("", [{ result_type: "scheme_review", found: false, target: "FY23 Q1" }]), /not in the scheme register/);
 });

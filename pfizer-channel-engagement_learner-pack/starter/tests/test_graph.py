@@ -242,3 +242,47 @@ def test_extraction_failure_on_pasted_details_goes_to_a_person(monkeypatch):
 
     assert result["route"] == "NEEDS_PERSON"
     assert result["checks"]["pasted_fields"]["status"] == "missing"
+
+
+def test_scheme_code_routes_to_scheme_review_and_cap_matches_sizing(monkeypatch):
+    monkeypatch.setattr(graph_module, "get_llm", lambda: ExplainOnlyLLM())
+
+    result = graph_module.run_question("Review scheme QS-FY25Q3-A")
+
+    assert result["route"] == "SCHEME_NEEDS_REVIEW"
+    assert set(result["checks"]) == {"cap", "eligibility", "validity_window", "sku_list", "free_ratio", "stock_norm"}
+    # Same figure as discovery/sizing.py's quarter table (FY25 Q3 FOC 4.95% of primary sales).
+    assert result["checks"]["cap"]["foc_pct"] == "4.95"
+    assert result["checks"]["cap"]["status"] == "fail"
+    assert result["checks"]["stock_norm"]["status"] == "missing"
+    assert result["model_calls"] == 1  # explanation only
+
+
+def test_quarter_within_cap_still_reports_eligibility(monkeypatch):
+    monkeypatch.setattr(graph_module, "get_llm", lambda: ExplainOnlyLLM())
+
+    result = graph_module.run_question("How did FY25 Q1 schemes do?")
+
+    assert result["checks"]["cap"]["status"] == "pass"
+    assert result["checks"]["cap"]["foc_pct"] == "1.18"
+    assert int(result["checks"]["eligibility"]["lines_checked"]) > 0
+
+
+def test_unknown_scheme_or_quarter_is_not_found_without_a_model_call(monkeypatch):
+    monkeypatch.setattr(graph_module, "get_llm", lambda: ExplainOnlyLLM())
+
+    for text in ("QS-FY23Q1-A", "QS-FY25Q1-B", "FY29 Q1"):
+        result = graph_module.run_question(text)
+        assert result["route"] == "NOT_FOUND", text
+        assert result["model_calls"] == 0
+        assert "FY27 Q2" in result["evidence"][0]["available_quarters"]
+
+
+def test_claim_id_takes_priority_over_a_quarter_mention(monkeypatch):
+    # The extra digits make the input "pasted details"; an extractor that finds no fields keeps the claim route.
+    monkeypatch.setattr(graph_module, "get_llm", lambda: PastedFieldsLLM())
+
+    result = graph_module.run_question("Review CLM-2404-04177 from FY25 Q1")
+
+    assert result["route"] == "RECOMMEND_CREDIT"
+    assert "cap" not in result["checks"] and "window" in result["checks"]

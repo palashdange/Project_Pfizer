@@ -1,5 +1,6 @@
 """Deterministic business rules used by the agent tools."""
 
+from calendar import monthrange
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 import re
@@ -9,6 +10,12 @@ from config import (
     BREAKAGE_SHORT_SUPPLY_WINDOW_DAYS,
     DUPLICATE_NEAR_QTY_MIN_PACKS,
     DUPLICATE_NEAR_QTY_TOLERANCE_PCT,
+    SCHEME_LOOKBACK_MONTHS,
+    SCHEME_MIN_ORDER_MULTIPLE,
+    SCHEME_REGISTER,
+    SCHEME_TIER_A_SKUS,
+    SCHEME_TIER_B_SKUS,
+    SCHEME_VALID_FROM_DAY,
     EXPIRY_CLAIM_WINDOW_DAYS as CLAIM_SUBMISSION_WINDOW_DAYS,
     FOC_CAP_PCT,
     MIN_REMAINING_SHELF_LIFE_DAYS,
@@ -179,6 +186,79 @@ def classify_prior_claim(current_qty: Decimal, prior_qty: Decimal, prior_status:
         current_qty * Decimal(str(DUPLICATE_NEAR_QTY_TOLERANCE_PCT)) / Decimal("100"),
     )
     return "near_repeat" if difference <= tolerance else None
+
+
+_QUARTER = re.compile(r"^FY(\d{2})\s*Q([1-4])$", re.IGNORECASE)
+_SCHEME = re.compile(r"^QS-FY(\d{2})Q([1-4])-([AB])$", re.IGNORECASE)
+
+
+def fiscal_quarter_of(day: date) -> tuple[int, int]:
+    """(two-digit FY, quarter) for an Indian April-March year: 15 Nov 2024 -> (25, 3)."""
+    fy = day.year + 1 if day.month >= 4 else day.year
+    quarter = (day.month - 4) % 12 // 3 + 1
+    return fy % 100, quarter
+
+
+def quarter_bounds(fy: int, quarter: int) -> tuple[date, date]:
+    """First and last day of a fiscal quarter."""
+    start_month = (3 + 3 * (quarter - 1)) % 12 + 1
+    start_year = 2000 + fy - 1 if quarter < 4 else 2000 + fy
+    end_month = start_month + 2
+    end = date(start_year, end_month, monthrange(start_year, end_month)[1])
+    return date(start_year, start_month, 1), end
+
+
+def parse_quarter(text: str) -> tuple[int, int]:
+    """Parse "FY27 Q1" or a scheme code "QS-FY27Q1-A" into (fy, quarter)."""
+    value = (text or "").strip().upper()
+    match = _QUARTER.match(value) or _SCHEME.match(value)
+    if not match:
+        raise ValueError(f"Not a quarter or scheme code: {text!r}")
+    return int(match.group(1)), int(match.group(2))
+
+
+def scheme_validity(code: str) -> tuple[date, date]:
+    """Annexure B: valid from the 22nd of the quarter's last month to that month's last day."""
+    fy, quarter = parse_quarter(code)
+    _, end = quarter_bounds(fy, quarter)
+    return date(end.year, end.month, SCHEME_VALID_FROM_DAY), end
+
+
+def scheme_skus(code: str) -> tuple[str, ...]:
+    """The SKUs a scheme code covers: Tier A or Tier B list from Annexure B."""
+    match = _SCHEME.match((code or "").strip().upper())
+    if not match:
+        raise ValueError(f"Not a scheme code: {code!r}")
+    return SCHEME_TIER_A_SKUS if match.group(3) == "A" else SCHEME_TIER_B_SKUS
+
+
+def expected_free_packs(code: str, invoiced_packs: Decimal) -> Decimal:
+    """Free packs the scheme terms allow: invoiced x (free per 10) / 10, rounded half up."""
+    key = (code or "").strip().upper()
+    if key not in SCHEME_REGISTER:
+        raise ValueError(f"Scheme code not in the Annexure B register: {code!r}")
+    free_per_ten = SCHEME_REGISTER[key][1]
+    return (Decimal(invoiced_packs) * free_per_ten / 10).quantize(Decimal("1"), rounding="ROUND_HALF_UP")
+
+
+def scheme_order_eligibility(order_packs: Decimal, previous_months_packs: list[Decimal]) -> dict:
+    """Annexure B: an order qualifies at >= 1.5 x the average monthly purchase of the previous 3 months.
+
+    `previous_months_packs` holds the stockist's purchases of the SKU in each of the previous
+    months (zero for a month with none). No purchase history at all cannot be judged.
+    """
+    if len(previous_months_packs) != SCHEME_LOOKBACK_MONTHS:
+        raise ValueError(f"Expected {SCHEME_LOOKBACK_MONTHS} months of purchases")
+    average = sum(previous_months_packs, Decimal("0")) / SCHEME_LOOKBACK_MONTHS
+    if average == 0:
+        return {"status": "no_history", "average": average, "threshold": Decimal("0"), "multiple": None}
+    threshold = average * Decimal(str(SCHEME_MIN_ORDER_MULTIPLE))
+    return {
+        "status": "eligible" if Decimal(order_packs) >= threshold else "below_threshold",
+        "average": average,
+        "threshold": threshold,
+        "multiple": Decimal(order_packs) / average,
+    }
 
 
 def shift_month(month: date, offset: int) -> date:

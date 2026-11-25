@@ -75,3 +75,14 @@ form.addEventListener("submit", async (e) => {
     askButton.disabled = false;
   }
 });
+
+// Scheme check: send the chosen quarter through the same graph and show it in the result card.
+const schemeButton = document.getElementById("scheme-run");
+if (schemeButton) {
+  schemeButton.addEventListener("click", () => {
+    const target = document.getElementById("scheme-target").value;
+    questionInput.value = `Review quarter-end scheme ${target} against the policy.`;
+    form.requestSubmit();
+    status.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}

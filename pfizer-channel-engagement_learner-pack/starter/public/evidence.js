@@ -374,6 +374,34 @@
     </article>`;
   }
 
+  function renderSchemeReview(item) {
+    if (!item.found) {
+      return `<article class="evidence-card"><h3>Scheme or quarter ${escapeHtml(item.target || "")} not found</h3>
+        <p class="muted">Not in the CO-POL-014 Annexure B register or outside the sales extract. Available quarters: ${escapeHtml((item.available_quarters || []).join(", "))}.</p></article>`;
+    }
+    const checks = item.checks || {};
+    const cap = checks.cap || {};
+    const elig = checks.eligibility || {};
+    const rows = Object.entries(checks).map(([key, check]) => ({
+      check: labelFor(key),
+      status: scalar(check.status).toUpperCase(),
+      source: (check.evidence_rows || []).map((row) => `${row.file}:${row.source_row}`).join(", ") || "—",
+      finding: check.reason || "—",
+      policy: check.policy_clause || "—",
+    }));
+    return `<article class="evidence-card scheme-review">
+      <h3>${escapeHtml(item.target)} · ${escapeHtml(item.quarter)} · circular ${escapeHtml((item.circulars || []).join(", "))}</h3>
+      <div class="metric-grid">
+        <div class="metric"><span>Free goods / primary sales (§4.4 cap 3%)</span><strong>${escapeHtml(cap.foc_pct)}%</strong><span>${formatInr(cap.foc_value_inr)} of ${formatInr(cap.sales_value_inr)}</span></div>
+        <div class="metric"><span>Above the cap</span><strong>${formatInr(cap.above_cap_inr)}</strong><span>Needs CFO approval (§4.3)</span></div>
+        <div class="metric"><span>Orders below 1.5× average (policy wording)</span><strong>${escapeHtml(elig.lines_below)} / ${escapeHtml(elig.lines_checked)}</strong><span>${formatInr(elig.free_value_below_inr)} free goods on them</span></div>
+        <div class="metric"><span>Same, non-scheme purchases only</span><strong>${escapeHtml(elig.lines_below_non_scheme_reading)}</strong><span>${formatInr(elig.free_value_below_non_scheme_reading_inr)}. Policy does not define which; ask the client.</span></div>
+      </div>
+      <h4>Scheme checks</h4>
+      ${renderTable(rows, [["check", "Check"], ["status", "Status"], ["source", "Source & row (top examples)"], ["finding", "Finding"], ["policy", "Policy"]], "No scheme checks were run.")}
+    </article>`;
+  }
+
   function renderClaimReview(item) {
     const checks = item.checks || {};
     const rows = Object.entries(checks).map(([key, check]) => ({
@@ -399,6 +427,7 @@
     }
     if (!item || typeof item !== "object") return `<article class="evidence-card">${escapeHtml(scalar(item))}</article>`;
     if (item.result_type === "claim_review") return renderClaimReview(item);
+    if (item.result_type === "scheme_review") return renderSchemeReview(item);
     if (item.result_type === "expiry_claim_review") return renderClaim(item);
     if (item.result_type === "claim_email_evidence") return renderClaimEmail(item);
     if (Object.prototype.hasOwnProperty.call(item, "found")) return renderBatch(item);
@@ -412,6 +441,10 @@
     const item = Array.isArray(evidence) ? evidence[0] : null;
     if (item && item.result_type === "claim_review") {
       return answer || `Claim ${item.claim_no || "requested"} was routed ${item.route || "for review"}.`;
+    }
+    if (item && item.result_type === "scheme_review") {
+      if (!item.found) return `${item.target || "This scheme or quarter"} is not in the scheme register or the sales extract.`;
+      return answer || `${item.target} was checked against the §4.4 cap and Annexure B; route ${item.route}.`;
     }
     if (item && item.result_type === "expiry_claim_review") {
       return item.found
@@ -447,6 +480,8 @@
     if (route === "REJECT") return { label: route, tone: "reject" };
     if (route === "NOT_FOUND") return { label: "NOT FOUND", tone: "review" };
     if (route === "NEEDS_PERSON") return { label: "NEEDS PERSON", tone: "review" };
+    if (route === "SCHEME_NEEDS_REVIEW") return { label: "SCHEME NEEDS REVIEW", tone: "reject" };
+    if (route === "SCHEME_WITHIN_POLICY") return { label: "SCHEME WITHIN POLICY", tone: "recommend" };
     const item = Array.isArray(evidence) ? evidence.find((entry) => entry && typeof entry === "object") : null;
     if (!item) return null;
     if (item.result_type === "expiry_claim_review") return { label: "NEEDS HUMAN REVIEW", tone: "review" };
@@ -465,7 +500,10 @@
     if (route === "RECOMMEND_CREDIT") return `Recommendation only. Decides and raises the credit note: ${DECISION_OWNER}.`;
     if (route === "REJECT") return `Recommendation only, under the clause shown below. Decides: ${DECISION_OWNER}.`;
     if (route === "NEEDS_PERSON") return `A person must review this before any credit. Decides: ${DECISION_OWNER}.`;
-    if (route === "NOT_FOUND") return "No claim with this number exists in the claims register; nothing to decide.";
+    if (route === "NOT_FOUND") return "Not found in the register or the extract; nothing to decide.";
+    if (route === "SCHEME_NEEDS_REVIEW" || route === "SCHEME_WITHIN_POLICY") {
+      return "Recommendation only. Decides: Commercial Finance (scheme cost, §4.3) and the National Sales Manager, Rohan Mehta; the CFO above the 3% cap.";
+    }
     return "";
   }
 

@@ -14,6 +14,13 @@ from config import (
 )
 from agent.rules import (
     classify_prior_claim,
+    expected_free_packs,
+    fiscal_quarter_of,
+    parse_quarter,
+    quarter_bounds,
+    scheme_order_eligibility,
+    scheme_skus,
+    scheme_validity,
     compare_pasted_fields,
     parse_amount,
     parse_expiry_month,
@@ -257,3 +264,38 @@ def test_pasted_fields_match_or_conflict_with_register():
     assert [row["match"] for row in conflict] == [False, False]
     unreadable = compare_pasted_fields({"expiry_claimed": "next month"}, register)
     assert unreadable[0]["match"] is None
+
+
+def test_fiscal_quarters_run_april_to_march():
+    assert fiscal_quarter_of(date(2024, 11, 15)) == (25, 3)  # v4.1 change date
+    assert fiscal_quarter_of(date(2025, 3, 31)) == (25, 4)
+    assert fiscal_quarter_of(date(2025, 4, 1)) == (26, 1)
+    assert quarter_bounds(25, 4) == (date(2025, 1, 1), date(2025, 3, 31))
+    assert parse_quarter("fy27 q1") == parse_quarter("QS-FY27Q1-B") == (27, 1)
+    with pytest.raises(ValueError):
+        parse_quarter("FY27 Q5")
+
+
+def test_scheme_validity_is_22nd_to_last_day_of_quarter_end_month():
+    assert scheme_validity("QS-FY25Q4-B") == (date(2025, 3, 22), date(2025, 3, 31))
+    assert scheme_validity("QS-FY26Q2-A") == (date(2025, 9, 22), date(2025, 9, 30))
+
+
+def test_scheme_sku_lists_and_free_ratio_follow_annexure_b():
+    assert "PFL1001" in scheme_skus("QS-FY27Q1-A") and "PFL1001" not in scheme_skus("QS-FY27Q1-B")
+    # Tier A moved from 10+1 to 10+2 in FY25 Q3; rounding is half up.
+    assert expected_free_packs("QS-FY25Q2-A", Decimal("289")) == Decimal("29")
+    assert expected_free_packs("QS-FY25Q3-A", Decimal("289")) == Decimal("58")
+    assert expected_free_packs("QS-FY25Q3-B", Decimal("15")) == Decimal("2")
+    with pytest.raises(ValueError):
+        expected_free_packs("QS-FY23Q1-A", Decimal("10"))
+
+
+def test_scheme_order_eligibility_at_and_around_one_and_a_half_times():
+    history = [Decimal("100"), Decimal("100"), Decimal("100")]
+    assert scheme_order_eligibility(Decimal("150"), history)["status"] == "eligible"
+    assert scheme_order_eligibility(Decimal("149"), history)["status"] == "below_threshold"
+    assert scheme_order_eligibility(Decimal("10"), [Decimal("0")] * 3)["status"] == "no_history"
+    # A month with no purchase counts as zero in the 3-month average.
+    assert scheme_order_eligibility(Decimal("150"), [Decimal("0"), Decimal("0"), Decimal("300")])["status"] == "eligible"
+    assert scheme_order_eligibility(Decimal("100"), [Decimal("0"), Decimal("0"), Decimal("300")])["status"] == "below_threshold"

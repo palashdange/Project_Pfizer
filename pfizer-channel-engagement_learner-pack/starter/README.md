@@ -1,22 +1,24 @@
 # Project Sankalp pilot (app)
 
-A read-only claims-screening pilot for the Commercial Finance claims team. A FastAPI endpoint runs each input through a LangGraph graph. Python checks the claim against policy CO-POL-014 and the case CSVs, then routes it to recommend credit, reject, needs a person, or not found, citing the clause and source rows. The model only reads free text into fields and explains the result. It cannot approve a claim, post a credit note, or write to ERP/WMS. A named person decides.
+A read-only pilot for Commercial Finance: it screens claims before credit and checks quarter-end schemes against the policy. A FastAPI endpoint runs each input through a LangGraph graph. Python checks the claim against policy CO-POL-014 and the case CSVs, then routes it to recommend credit, reject, needs a person, or not found, citing the clause and source rows. The model only reads free text into fields and explains the result. It cannot approve a claim, post a credit note, or write to ERP/WMS. A named person decides.
 
 The project overview, live URL and demo inputs are in the [root README](../../README.md). The design is in the [architecture note](../discovery/architecture_note.md).
 
 ```
-app.py            FastAPI routes only (/api/health, /api/ask); Vercel looks for `app` here
+app.py            FastAPI routes only (/api/health, /api/ask, /api/batch); Vercel looks for `app` here
 config.py         every policy number, with its CO-POL-014 clause and page
-agent/graph.py    the LangGraph graph: state, nodes, edges, route priority
+agent/graph.py    the LangGraph graph: state, nodes, edges, route priority; code-only review_graph
+agent/batch.py    batch mode: routes register claims in code and totals ₹ by route
+agent/schemes.py  scheme check: §4.4 cap and Annexure B rules for a quarter or scheme code
 agent/rules.py    plain-Python date, quantity, value and shelf-life rules
 agent/data.py     loads the CSVs once, de-duplicates, keeps source rows
 agent/prompts.py  the two prompts (field extraction, explanation)
 agent/llm.py      the only file that knows the model provider (OpenRouter)
 agent/tools.py    earlier tool-loop functions; tested but not wired into the graph
 data/             the case CSVs
-public/           index.html, app.js, evidence.js, progress.js, style.css
+public/           index.html, app.js, evidence.js, progress.js, batch.js, style.css
 tests/            pytest (no API key needed) and Node frontend tests
-checks/           check_set.csv (16 hand-checked + 6 held-out) and run_checks.py
+checks/           check_set.csv (19 hand-checked incl. 3 scheme cases + 6 held-out) and run_checks.py
 AGENTS.md         instructions for the coding agent
 vercel.json       region bom1; keeps tests and local files out of the bundle
 ```

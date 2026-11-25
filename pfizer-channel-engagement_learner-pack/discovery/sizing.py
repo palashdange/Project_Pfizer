@@ -766,6 +766,42 @@ def calculate_gst_credit_note_timing(frames: dict[str, pd.DataFrame], *, deadlin
     return row, by_type
 
 
+def calculate_register_controls(frames: dict[str, pd.DataFrame]) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Signs in the claims register that the C&F checks (C&F SOP 2.6) were not recorded.
+
+    SOP step 4 requires the physical verification result in the remarks column; a credited claim
+    with blank remarks has no recorded result. Overlaps the other claim screens; not additive.
+    """
+    data = _prepare(frames)
+    claims = data["expiry_claims.csv"]
+    status = claims["status"].astype("string").str.strip().str.upper()
+    remarks = claims["remarks"].astype("string").fillna("").str.strip()
+    credited = claims[status.eq("CREDITED")]
+    blank = credited[remarks[status.eq("CREDITED")].eq("")]
+    months = _months(claims, "claim_date")
+    blank_value = float(blank["credit_value_inr"].sum())
+    no_invoice = credited[credited["original_invoice_ref"].astype("string").fillna("").str.strip().eq("")]
+    counts = {
+        "credited": int(len(credited)),
+        "rejected": int(status.eq("REJECTED").sum()),
+        "rejected_remarks": remarks[status.eq("REJECTED")].value_counts().to_dict(),
+        "credited_blank_remarks": int(len(blank)),
+        "credited_blank_remarks_with_verifier_name": int(blank["verified_by"].astype("string").fillna("").str.strip().ne("").sum()),
+        "credited_no_invoice_by_remark": no_invoice["remarks"].astype("string").fillna("").str.strip().value_counts().to_dict(),
+    }
+    row = {
+        "problem": "Credited claims with no recorded C&F verification result (blank remarks; overlaps other screens)",
+        "inr_value": round(blank_value * 12 / months, 2) if months else 0.0,
+        "period": f"Annualized run-rate ({months} observed months)",
+        "method": (f"{len(blank)} of {len(credited)} credited claims have blank remarks although C&F SOP 2.6 step 4 requires the "
+                   f"verification result there; credit value ₹{blank_value:,.2f} ÷ {months} months × 12. Not additive."),
+        "source_rows_example": _examples(blank.sort_values("credit_value_inr", ascending=False), "expiry_claims.csv", extra="claim_no"),
+        "policy_clause": "C&F agreement SC-AGR-CF-003 Schedule 2 §2.6",
+        "forecast_fixes": "no — a forecast does not record verification.",
+    }
+    return row, counts
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-dir", type=Path, default=DEFAULT_DATA_DIR,
@@ -777,7 +813,8 @@ def main() -> None:
     frames = load_data(args.data_dir)
     results, summary = calculate_sizing(frames)
     gst_row, gst_by_type = calculate_gst_credit_note_timing(frames)
-    results = pd.concat([results, pd.DataFrame([gst_row], columns=RESULT_COLUMNS)], ignore_index=True)
+    control_row, control_counts = calculate_register_controls(frames)
+    results = pd.concat([results, pd.DataFrame([gst_row, control_row], columns=RESULT_COLUMNS)], ignore_index=True)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     results.to_csv(args.output, index=False)
 
@@ -807,6 +844,10 @@ def main() -> None:
     print("\nCredit notes after the CGST §34(2) window (30 Nov after invoice FY end), by claim type:")
     print(gst_by_type.to_string(index=False))
     print(f"  {gst_row['method']}")
+    print("\nClaims register controls (C&F SOP 2.6):")
+    for name, value in control_counts.items():
+        print(f"  {name}: {value}")
+    print(f"  {control_row['method']}")
     print(f"\nWrote {len(results):,} rows to {args.output}")
 
 

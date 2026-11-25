@@ -2,13 +2,17 @@
 
 **Working note · 24 November 2026 · Fictional training case**
 
-## 1. Context
+## 1. The three problems
 
-The case asks why the domestic channel is losing value at both ends and whether forecasting helps; the data signals rising expiry claims, quarter-end scheme loading, uneven CFA fill/allocation, and claim-control exposure.
+The CFO sees expiry returns rising and fill rates falling, and asks for an AI forecast. The data points to three problems, none of them a forecast error. Extracts cover Apr 2024–Sep 2026; figures are screens, not proven savings, and sell-through, stock on hand and causal links are not in the pack.
 
-**Caveat:** Fictional invoice/claim extracts (Apr 2024–Sep 2026) show historical screens, not proven savings; non-invoiced orders, cancellations, sell-through, stock on hand, margin, and causal links are unavailable.
+| Problem | Evidence | Owner | Our response |
+|---|---|---|---|
+| **1. Quarter-end scheme loading** pushes stock past what stockists sell; it expires and returns as claims 1–2 years later | Last-10-day pack share 20%→35% and FOC 1.2%→5.0% after v4.1 (15 Nov 2024); FOC above the 3% cap ₹1.58 cr/yr; expiry claims ₹1.46 cr/yr above the CFO's 1% target, now ~₹4 cr/yr (§2, §5) | Rohan Mehta, Arjun Sethi; Commercial Finance checks scheme cost (§4.3) | **Recommendation:** enforce the §4.4 cap and §4.5 stock norm |
+| **2. Stale C&F allocation** splits stock on last year's shares | CF-N02 Lucknow order share 15.3%→20.9%, fill 80.6%; CF-E01 Kolkata 17.9%→13.3% (§5) | Kavita Rao, Vaishali Kapoor | **Recommendation:** allocation review; expiry-risk view |
+| **3. Weak claim checks** let invalid claims be credited | ₹20.25 L/yr outside window, repeat or over-quantity; ₹43.08 L/yr credited with no invoice reference; ₹36.1 L/yr credited with no recorded C&F verification (overlaps); 31 rejections in 30 months vs 532 the rules reject (§2; [research note §4](research_note.md)) | Neha Bansal | **Built:** the claims-check pilot |
 
-## 2. Ranked recovery indicators
+## 2. Ranked recovery indicators (₹)
 
 Rank 1 is the largest modeled expiry-target gap; it is not proven recoverable and overlaps claim-control screens.
 
@@ -32,7 +36,7 @@ Rank 1 is the largest modeled expiry-target gap; it is not proven recoverable an
 
 **Secondary user:** Kavita Rao (Head of Supply Chain), reviewing expiry-risk batches and short CFAs ([interviews, p. 2](../data-pack/04_stakeholder_interview_notes.pdf)).
 
-**Plan for the money:** Pre-credit controls could flag **₹20.25 lakh/year** in outside-window (₹15.74L), duplicate (₹4.45L), and over-quantity (₹0.066L) candidates—not proven savings. The pilot's batch mode, re-running every register claim through its checks, reproduces this at ₹19.94 lakh/year. **₹43.08 lakh/year** of credited claims without references would route to ledger/approval review, not automatic rejection. Address future expiry risk through scheme stock norms (§4.5: max 2.5 months’ average secondary stock; SSS not received), allocation review, and an expiry-risk view; their financial impact is unquantified.
+**Plan for the money:** the pilot flags **₹20.25 L/yr** of invalid credits before the credit note (batch mode re-runs every register claim: ₹19.94 L/yr) and sends **₹43.08 L/yr** without an invoice reference to ledger and approval review, not automatic rejection. These are screens, not proven savings. Problems 1 and 2 are larger but need policy and planning changes; their impact is unquantified.
 
 ## 5. Why it may be happening: observed signals
 

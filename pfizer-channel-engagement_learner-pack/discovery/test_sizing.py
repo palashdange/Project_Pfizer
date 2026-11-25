@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from sizing import (_clean_file, calculate_gst_credit_note_timing, calculate_sizing, fiscal_quarter,
+from sizing import (_clean_file, calculate_gst_credit_note_timing, calculate_register_controls, calculate_sizing, fiscal_quarter,
                     normalize_code, parse_mixed_dates)
 
 
@@ -184,3 +184,29 @@ class GstCreditNoteTimingTest(unittest.TestCase):
         self.assertEqual(row["policy_clause"], "CGST Act 2017 §34(2); CO-POL-014 §5.7")
         expired = by_type[by_type["claim_type"].eq("Expired")].iloc[0]
         self.assertEqual((expired["credited"], expired["late"]), (2, 1))
+
+
+class RegisterControlsTest(unittest.TestCase):
+    def test_counts_credited_claims_with_blank_remarks_and_rejections(self):
+        claims = pd.DataFrame({
+            "claim_no": ["C1", "C2", "C3", "C4"],
+            "claim_date": pd.to_datetime(["2025-01-05", "2025-01-06", "2025-02-07", "2025-02-08"]),
+            "status": ["Credited", "Credited", "Rejected", "Pending"],
+            "remarks": ["", "Verified", "Duplicate of earlier claim", ""],
+            "verified_by": ["A.B", "C.D", "E.F", ""],
+            "original_invoice_ref": ["", "INV/1", "INV/2", ""],
+            "qty_claimed": [1, 1, 1, 1], "claim_value_inr": [100, 200, 300, 400],
+            "credit_value_inr": [100, 200, 0, 0], "_source_row": [2, 3, 4, 5],
+        })
+        frames = {"expiry_claims.csv": claims, "primary_sales.csv": pd.DataFrame({
+            "ordered_qty": [], "invoiced_qty": [], "free_qty": [], "pts_inr": [], "net_value_inr": []}),
+            "sku_master.csv": pd.DataFrame({"pts_inr": [1]})}
+
+        row, counts = calculate_register_controls(frames)
+
+        # Pending C4 also has blank remarks but is not credited, so it is not counted.
+        self.assertEqual(counts["credited_blank_remarks"], 1)
+        self.assertEqual(counts["credited_blank_remarks_with_verifier_name"], 1)
+        self.assertEqual(counts["rejected"], 1)
+        self.assertEqual(counts["credited_no_invoice_by_remark"], {"": 1})
+        self.assertEqual(row["inr_value"], 600.0)  # ₹100 over 2 months x 12

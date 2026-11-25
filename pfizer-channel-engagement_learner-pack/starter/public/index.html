@@ -117,10 +117,51 @@
       </details>
     </div>
   </section>
+  <section class="input-card batch-card" aria-labelledby="stock-heading">
+    <h2 id="stock-heading">4. Stock and expiry risk · Supply Chain</h2>
+    <p class="hint">For Kavita Rao, Head of Supply Chain. At a month-end snapshot, for every C&F: stock that will ship below the 60% shelf-life norm or hit the 60-day block (CO-POL-014 §7.1–7.2), out-of-stock lines, cover above the 2-month top-up norm (C&F agreement §2.2), and dispatches that skipped older stock (FEFO, clause 6.3). In code.</p>
+    <div class="batch-controls">
+      <label class="sr-only" for="stock-target">Snapshot</label>
+      <select id="stock-target">
+        <option value="30-09-2026">30-09-2026 (latest)</option>
+        <option value="31-08-2026">31-08-2026</option>
+        <option value="31-07-2026">31-07-2026</option>
+        <option value="30-06-2026">30-06-2026</option>
+        <option value="31-05-2026">31-05-2026</option>
+        <option value="30-04-2026">30-04-2026</option>
+        <option value="31-03-2026">31-03-2026</option>
+        <option value="31-12-2025">31-12-2025</option>
+        <option value="30-09-2025">30-09-2025</option>
+        <option value="30-06-2025">30-06-2025</option>
+        <option value="31-03-2025">31-03-2025</option>
+        <option value="31-12-2024">31-12-2024</option>
+        <option value="30-09-2024">30-09-2024</option>
+        <option value="30-06-2024">30-06-2024</option>
+      </select>
+      <button type="button" id="stock-run">Check stock</button>
+    </div>
+    <p id="stock-status" class="hint status" role="status" aria-live="polite"></p>
+    <div id="stock-out" class="result-area" hidden>
+      <div class="answer-card">
+        <div class="answer-heading">
+          <h3>Result</h3>
+          <span id="stock-decision-badge" class="decision-badge" hidden></span>
+        </div>
+        <p id="stock-decision-owner" class="decision-owner" hidden></p>
+        <p id="stock-answer"></p>
+      </div>
+      <h3>Evidence from the data</h3>
+      <div id="stock-evidence" class="evidence-list"></div>
+      <details id="stock-raw-details" class="raw-details">
+        <summary>View raw evidence</summary>
+        <pre id="stock-raw-evidence"></pre>
+      </details>
+    </div>
+  </section>
 </main>
-<script src="/evidence.js?v=17"></script>
+<script src="/evidence.js?v=18"></script>
 <script src="/progress.js?v=7"></script>
-<script src="/app.js?v=11"></script>
+<script src="/app.js?v=12"></script>
 <script src="/batch.js?v=2"></script>
 </body>
 </html>

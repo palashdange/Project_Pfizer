@@ -79,3 +79,12 @@ if (schemeButton) {
       panel("scheme-"), [schemeSelect, schemeButton]);
   });
 }
+
+// Stock review for the Head of Supply Chain: same graph, result in section 4's own panel.
+const stockButton = document.getElementById("stock-run");
+if (stockButton) {
+  const stockSelect = document.getElementById("stock-target");
+  stockButton.addEventListener("click", () => {
+    askAndRender(`Stock review ${stockSelect.value} for every C&F.`, panel("stock-"), [stockSelect, stockButton]);
+  });
+}

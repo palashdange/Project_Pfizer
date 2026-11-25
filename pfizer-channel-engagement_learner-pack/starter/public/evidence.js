@@ -411,6 +411,50 @@
     </article>`;
   }
 
+  function renderStockReview(item) {
+    if (!item.found) {
+      return `<article class="evidence-card"><h3>No stock snapshot for ${escapeHtml(item.target || "")}</h3>
+        <p class="muted">Month-end snapshots available: ${escapeHtml((item.available_snapshots || []).join(", "))}.</p></article>`;
+    }
+    const checks = item.checks || {};
+    const short = checks.short_shelf_life || {};
+    const block = checks.expiry_block || {};
+    const rows = Object.entries(checks).map(([key, check]) => ({
+      check: labelFor(key),
+      status: scalar(check.status).toUpperCase(),
+      source: (check.evidence_rows || []).map((row) => `${row.file}:${row.source_row}`).join(", ") || "—",
+      finding: check.reason || "—",
+      policy: check.policy_clause || "—",
+    }));
+    const cfaRows = (item.by_cfa || []).map((c) => ({
+      cfa: `${c.cfa} ${c.city}`, short: formatCompactInr(c.short_shelf_life_inr), block: formatCompactInr(c.block_inr),
+      out: `${c.out_of_stock} / ${c.lines}`, above: `${c.above_norm} / ${c.lines}`,
+      fefo: c.fefo_skip_pct === null || c.fefo_skip_pct === undefined ? "n/a" : `${c.fefo_skip_pct}%`,
+    }));
+    const batchRows = (item.top_batches || []).map((b) => ({
+      batch: `${b.cfa} · ${b.sku_code} ${b.product} · ${b.batch_no} (exp ${b.expiry_date})`,
+      packs: `${b.packs_at_risk} of ${b.on_hand_packs} (outward ${b.monthly_outward_packs}/month)`,
+      value: formatInr(b.value_at_risk_inr), source: b.source,
+    }));
+    const outCount = (checks.out_of_stock || {}).lines;
+    const aboveCount = (checks.above_norm || {}).lines;
+    return `<article class="evidence-card stock-review">
+      <h3>Stock at ${escapeHtml(item.snapshot)} · all C&Fs</h3>
+      <div class="metric-grid">
+        <div class="metric"><span>Will ship below the 60% shelf-life norm (§7.1)</span><strong>${formatCompactInr(short.value_inr)}</strong><span>At PTS; stockists may refuse. Not a write-off.</span></div>
+        <div class="metric"><span>Will hit the 60-day block (write-off, §7.2)</span><strong>${formatCompactInr(block.value_inr)}</strong><span>At the current outward rate</span></div>
+        <div class="metric"><span>C&F-SKU lines out of stock</span><strong>${escapeHtml(outCount)}</strong><span>Snapshot marker: blank batch, zero packs</span></div>
+        <div class="metric"><span>Lines above 2 months' cover (§2.2)</span><strong>${escapeHtml(aboveCount)}</strong><span>Top-up norm is 2 months</span></div>
+      </div>
+      <h4>By C&F</h4>
+      ${renderTable(cfaRows, [["cfa", "C&F"], ["short", "Below 60% norm"], ["block", "Write-off risk"], ["out", "Out of stock"], ["above", "Above 2 months"], ["fefo", "Dispatches skipping older stock"]], "No C&F rows.")}
+      <h4>Batches most at risk</h4>
+      ${renderTable(batchRows, [["batch", "Batch"], ["packs", "Packs at risk"], ["value", "₹ at PTS"], ["source", "Source & row"]], "No batch is at risk.")}
+      <h4>Stock checks</h4>
+      ${renderTable(rows, [["check", "Check"], ["status", "Status"], ["source", "Source & row"], ["finding", "Finding"], ["policy", "Policy"]], "No stock checks were run.")}
+    </article>`;
+  }
+
   function renderClaimReview(item) {
     const checks = item.checks || {};
     const rows = Object.entries(checks).map(([key, check]) => ({
@@ -437,6 +481,7 @@
     if (!item || typeof item !== "object") return `<article class="evidence-card">${escapeHtml(scalar(item))}</article>`;
     if (item.result_type === "claim_review") return renderClaimReview(item);
     if (item.result_type === "scheme_review") return renderSchemeReview(item);
+    if (item.result_type === "stock_review") return renderStockReview(item);
     if (item.result_type === "expiry_claim_review") return renderClaim(item);
     if (item.result_type === "claim_email_evidence") return renderClaimEmail(item);
     if (Object.prototype.hasOwnProperty.call(item, "found")) return renderBatch(item);
@@ -450,6 +495,10 @@
     const item = Array.isArray(evidence) ? evidence[0] : null;
     if (item && item.result_type === "claim_review") {
       return answer || `Claim ${item.claim_no || "requested"} was routed ${item.route || "for review"}.`;
+    }
+    if (item && item.result_type === "stock_review") {
+      if (!item.found) return `No stock snapshot for ${item.target || "that date"}.`;
+      return answer || `Stock at ${item.snapshot} was checked for expiry risk, cover and FEFO; route ${item.route}.`;
     }
     if (item && item.result_type === "scheme_review") {
       if (!item.found) return `${item.target || "This scheme or quarter"} is not in the scheme register or the sales extract.`;
@@ -491,6 +540,8 @@
     if (route === "NEEDS_PERSON") return { label: "NEEDS PERSON", tone: "review" };
     if (route === "SCHEME_NEEDS_REVIEW") return { label: "SCHEME NEEDS REVIEW", tone: "reject" };
     if (route === "SCHEME_WITHIN_POLICY") return { label: "SCHEME WITHIN POLICY", tone: "recommend" };
+    if (route === "STOCK_NEEDS_ACTION") return { label: "STOCK NEEDS ACTION", tone: "reject" };
+    if (route === "STOCK_OK") return { label: "STOCK OK", tone: "recommend" };
     const item = Array.isArray(evidence) ? evidence.find((entry) => entry && typeof entry === "object") : null;
     if (!item) return null;
     if (item.result_type === "expiry_claim_review") return { label: "NEEDS HUMAN REVIEW", tone: "review" };
@@ -510,6 +561,9 @@
     if (route === "REJECT") return `Recommendation only, under the clause shown below. Decides: ${DECISION_OWNER}.`;
     if (route === "NEEDS_PERSON") return `A person must review this before any credit. Decides: ${DECISION_OWNER}.`;
     if (route === "NOT_FOUND") return "Not found in the register or the extract; nothing to decide.";
+    if (route === "STOCK_NEEDS_ACTION" || route === "STOCK_OK") {
+      return "Recommendation only. Decides: Kavita Rao, Head of Supply Chain (returns to the CDC need her approval, §2.5); allocation shares sit with Demand Planning, Vaishali Kapoor.";
+    }
     if (route === "SCHEME_NEEDS_REVIEW" || route === "SCHEME_WITHIN_POLICY") {
       return "Recommendation only. Decides: Commercial Finance (scheme cost, §4.3) and the National Sales Manager, Arjun Sethi; the CFO, Rohan Mehta, above the 3% cap.";
     }

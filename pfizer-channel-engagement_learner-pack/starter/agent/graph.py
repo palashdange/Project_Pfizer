@@ -14,6 +14,7 @@ from agent import data
 from agent.llm import get_llm
 from agent.prompts import EXPLAIN_SYSTEM_PROMPT, PARSE_INPUT_SYSTEM_PROMPT
 from agent.schemes import available_quarters, review_scheme
+from agent.stock import available_snapshots, review_stock
 from agent.rules import (
     assess_expiry_claim_window,
     assess_transit_claim_window,
@@ -37,6 +38,8 @@ from config import (
 
 CLAIM_PATTERN = re.compile(r"\bCLM-\d{4}-\d{5}\b", re.IGNORECASE)
 EMAIL_PATTERN = re.compile(r"\bEML-\d{3}\b", re.IGNORECASE)
+STOCK_PATTERN = re.compile(r"\b(?:stock|expiry)\s+(?:review|risk|check)\b", re.IGNORECASE)
+DATE_PATTERN = re.compile(r"\b\d{2}-\d{2}-\d{4}\b")
 SCHEME_PATTERN = re.compile(r"\bQS-FY\d{2}Q[1-4]-[AB]\b|\bFY\s?\d{2}\s*Q[1-4]\b", re.IGNORECASE)
 
 
@@ -69,6 +72,7 @@ class State(TypedDict):
     model_calls: int
     elapsed_seconds: float
     scheme_target: str
+    stock_target: str
 
 
 def _source_row(row: Optional[dict]) -> Optional[dict]:
@@ -207,6 +211,11 @@ def parse_input(state: State) -> dict:
             "records": {**state.get("records", {}), "email": email},
             "evidence": [email_evidence],
         })
+
+    if STOCK_PATTERN.search(text):
+        # A stock review for the Head of Supply Chain; optional snapshot date, else the latest.
+        day = DATE_PATTERN.search(text)
+        return {"stock_target": day.group(0) if day else "latest"}
 
     scheme = SCHEME_PATTERN.search(text)
     if scheme:
@@ -593,6 +602,23 @@ def scheme_review(state: State) -> dict:
     }
 
 
+def stock_review(state: State) -> dict:
+    """Review C&F stock for expiry risk, cover and FEFO at one snapshot, in code."""
+    target = state["stock_target"]
+    result = review_stock(None if target == "latest" else target)
+    if result is None:
+        return {
+            "route": "NOT_FOUND",
+            "evidence": [{"result_type": "stock_review", "target": target, "found": False, "route": "NOT_FOUND",
+                          "checks": {}, "available_snapshots": available_snapshots()}],
+        }
+    return {
+        "route": result["route"],
+        "checks": result["checks"],
+        "evidence": [{"result_type": "stock_review", "found": True, **result}],
+    }
+
+
 def _after_scheme(state: State) -> str:
     return END if state.get("route") == "NOT_FOUND" else "explain"
 
@@ -600,6 +626,8 @@ def _after_scheme(state: State) -> str:
 def _after_parse(state: State) -> str:
     if state.get("scheme_target"):
         return "scheme_review"
+    if state.get("stock_target"):
+        return "stock_review"
     if state.get("route") == "NEEDS_PERSON" and not state.get("claim_no"):
         return "explain"
     return "lookup"
@@ -629,7 +657,10 @@ builder.add_node("decide", decide)
 builder.add_node("explain", explain)
 builder.add_edge(START, "parse_input")
 builder.add_node("scheme_review", scheme_review)
-builder.add_conditional_edges("parse_input", _after_parse, {"lookup": "lookup", "explain": "explain", "scheme_review": "scheme_review"})
+builder.add_node("stock_review", stock_review)
+builder.add_conditional_edges("parse_input", _after_parse, {
+    "lookup": "lookup", "explain": "explain", "scheme_review": "scheme_review", "stock_review": "stock_review"})
+builder.add_conditional_edges("stock_review", _after_scheme, {"explain": "explain", END: END})
 builder.add_conditional_edges("scheme_review", _after_scheme, {"explain": "explain", END: END})
 builder.add_conditional_edges("lookup", _after_lookup, {"dispatch_checks": "dispatch_checks", END: END})
 # Fan out checks in one superstep, then wait for every independent check to finish.
@@ -666,6 +697,7 @@ def review_claim(claim_no: str) -> dict:
         "input_text": claim_no, "claim_no": claim_no, "email_id": "", "records": {}, "checks": {},
         "route": "", "explanation": "", "evidence": [], "model_calls": 0, "elapsed_seconds": 0.0,
         "scheme_target": "",
+        "stock_target": "",
     })
     return {"route": final.get("route", "NEEDS_PERSON"), "checks": final.get("checks", {})}
 
@@ -685,6 +717,7 @@ def run_question(question: str) -> dict:
         "model_calls": 0,
         "elapsed_seconds": 0.0,
         "scheme_target": "",
+        "stock_target": "",
     })
     elapsed = time.perf_counter() - started
     return {

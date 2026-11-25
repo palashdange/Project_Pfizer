@@ -1,81 +1,85 @@
-# Pfizer domestic channel: discovery and pilot recommendation
+# Pfizer domestic channel: what we found and what we built
 
-**Working note · 25 November 2026 · Fictional training case**
+**Discovery note · 25 November 2026 · Fictional training case.** Data: invoice, claims and stock extracts, Apr 2024–Sep 2026. Figures are checks on past data, not proven savings, and they overlap, so do not add them up.
 
-## 1. The three problems
+## The answer in brief
 
-The CFO sees expiry returns rising and fill rates falling, and asks for an AI forecast. The data points to three problems, none of them a forecast error. Extracts cover Apr 2024–Sep 2026; figures are screens, not proven savings, and sell-through, stock on hand and causal links are not in the pack.
+- **A new forecasting tool would not fix this.** The national forecast is fine. The money is lost after it, in three places.
+- **Three problems:** quarter-end schemes push more stock than stockists can sell; stock is split across the C&Fs (regional warehouses) on last year's shares; and invalid claims are credited without proper checks.
+- **What we built:** one read-only tool. It checks every claim before credit (**₹19.94 lakh a year stopped**, **₹86.26 lakh a year sent to a person**), checks each quarter's schemes against the policy, and shows where C&F stock is short or ageing. A named person makes every decision.
 
-| Problem | Evidence | Owner | Our response |
-|---|---|---|---|
-| **1. Quarter-end scheme loading** pushes stock past what stockists sell; it expires and returns as claims 1–2 years later | Last-10-day pack share 20%→35% and FOC 1.2%→5.0% after v4.1 (15 Nov 2024); FOC above the 3% cap ₹1.58 cr/yr; expiry claims ₹1.46 cr/yr above the CFO's 1% target, now ~₹4 cr/yr (§2, §5) | Arjun Sethi (NSM, approves schemes); Rohan Mehta (CFO, cap exceptions); Commercial Finance checks cost (§4.3) | **Built:** scheme check per quarter (cap, 1.5× minimum order, terms). Free goods on orders below the minimum: ₹50.2 L–₹2.63 cr/yr. **Recommend:** enforce the cap and §4.5 stock norm |
-| **2. Stale C&F allocation** splits stock on last year's shares | CF-N02 Lucknow order share 15.3%→20.9%, fill 80.6%; CF-E01 Kolkata 17.9%→13.3% (§5) | Kavita Rao, Vaishali Kapoor | **Built:** stock view per snapshot. At 30 Sep 2026 Lucknow is out of stock on 23 of 36 SKUs; ₹2.06 cr will ship below the 60% shelf-life norm, ₹1.22 cr at Kolkata, which skipped older stock on 83% of dispatches after its Feb 2026 WMS change (vs 28–35% elsewhere). **Recommend:** allocation review; check Kolkata's WMS picking rules |
-| **3. Weak claim checks** let invalid claims be credited | ₹20.25 L/yr outside window, repeat or over-quantity; ₹43.08 L/yr credited with no invoice reference; ₹36.1 L/yr credited with no recorded C&F verification (overlaps); 31 rejections in 30 months vs 532 the rules reject (§2; [research note §4](research_note.md)) | Neha Bansal | **Built:** the claims-check pilot |
+## 1. The three problems, ranked by money
 
-## 2. Ranked recovery indicators (₹)
+Ranked by the money involved each year. Rank 1 is money already spent; ranks 2 and 3 are mostly money at risk.
 
-Rank 1 is the largest modeled expiry-target gap; it is not proven recoverable and overlaps claim-control screens.
+### Rank 1. Quarter-end schemes push more stock than stockists can sell
 
-| Rank | Indicator / value | Method and evidence | Owners |
-|---:|---|---|---|
-| 1 | **Expiry-claim gap:** 30-month run-rate **₹1.46 cr/year**; FY27 H1 observed **₹1.99 cr**, current run-rate **₹1.99 cr × 2 = ₹3.97 cr/year** | FY-specific excess over 1% of primary net value; sum positive gaps ÷ 30 months × 12. H1 = Apr–Sep 2026; claims are grouped by claim FY, not matched cohorts. [Sizing](sizing_results.csv); CFO target ([interviews, p. 1](../data-pack/04_stakeholder_interview_notes.pdf)). | Rohan Mehta, Arjun Sethi, Kavita Rao |
-| 2 | **No-invoice-reference credited claims: ₹43.08 lakh/year at risk** | Residual credited value after higher-priority screens; blank reference is not proof of invalidity. CO-POL-014 §5.4 allows ledger verification and written Area Manager approval. [Sizing](sizing_results.csv). | Neha Bansal |
-| 3 | **Outside-window credited claims: ₹15.74 lakh/year** | Type-specific CO-POL-014 §5.2 windows. [Sizing](sizing_results.csv). | Neha Bansal |
-| 4 | **Potential duplicate credits: ₹4.45 lakh/year** | Later credit matching stockist + batch + quantity; candidates need payment/ledger review. Includes hand-checked CLM-2603-01616 / CLM-2605-04488. §5.6. [Sizing](sizing_results.csv). | Neha Bansal, Rohan Mehta |
-| 5 | **Over-quantity screen: ₹6,642/year** | Excess claimed packs above invoiced + free packs, valued at PTS; higher-priority categories excluded. §5.5. [Sizing](sizing_results.csv). | Neha Bansal |
+**What happens.** In the last 7–10 days of each quarter, stockists get FOC (free-of-charge) packs for ordering at least 1.5× their normal month. Policy v4.1 extended this to more products on 15 Nov 2024 (policy p.1). Extra stock ages on the shelf and returns as expiry claims 1–2 years later; expired stock cannot legally be sold.
 
-**Other scale indicators:** The after-free-packs order gap is **₹15.33 cr/year** (availability upper bound, not lost sales). FOC above the quarterly cap screens at **₹1.58 cr/year**; QBR says the CFO approved each exception ([QBR, p. 2](../data-pack/06_qbr_finance_and_mis_pack.pdf)). The <60% RSL claim cross-check (₹96.37 lakh/year) overlaps the claims screens.
+**Evidence.** The share of a quarter's packs shipped in its last 10 days rose from about 20% to 35%, and free goods from 1.2% to 5.0% of sales against a 3% cap (policy §4.4; table A). Free goods above the cap cost **₹1.58 crore a year**. The CFO approved every exception (QBR p.2); on 25 Aug 2026 he wrote "Approved, last time. I want to see the expiry impact before December" (inbox p.4). Expiry claims run **₹1.46 crore a year** above his 1% target, and ₹1.99 crore in Apr–Sep 2026 alone, about **₹4 crore a year** at that rate (interviews p.1). A Ludhiana stockist's voice note describes overbuying one product on a 10+2 offer while short of another ([voice-note log](voice_note_evidence_log.md)).
 
-## 3. Forecast verdict
+- **Owners:** Arjun Sethi, National Sales Manager (approves schemes); Rohan Mehta, CFO (approves cap exceptions).
+- **Built:** scheme check per quarter. **₹50.2 lakh–₹2.63 crore a year** of free goods went to orders below the 1.5× minimum; the range depends on how the policy is read (question 5). Example: invoice INV/S01/2406/007225 (primary_sales.csv row 7850).
+- **Ask:** keep to the 3% cap and the 1.5× rule; check the 2.5-month stock limit (§4.5) properly, not by phone call.
 
-**A new forecast tool has no demonstrated direct recovery here; the intervention areas are scheme loading, CFA allocation, and claim controls.** Vaishali says the forecast is national and the allocation sheet splits it, so the ₹15.33 cr gap is not itself forecast error ([interviews, p. 3](../data-pack/04_stakeholder_interview_notes.pdf)). **0% of quantified recoverable rupees is demonstrated as forecast-addressable**; the expiry gap is a monitor, not a forecast benefit estimate. Why the problems happen, read against the D&C Act, Drugs Rules, CGST §34 and DPCO 2013: [research note](research_note.md).
+### Rank 2. Stock is split on last year's shares: short in one place, ageing in another
 
-## 4. Pilot user and plan for the money
+**What happens.** Each month the national forecast is split across the six C&Fs by fixed shares. The FY26 review was missed and the shares rolled forward (Kavita Rao, interviews p.1). Demand moved; the shares did not. A planning voice note also mentions the missed review ([voice-note log](voice_note_evidence_log.md)).
 
-**Primary user:** Commercial Finance claims executive; owner Neha Bansal (Controller). Weekly, review each claim and recommend credit, reject, or person review; Finance keeps decision authority. Her two-person team handles about 4,000 lines/year and cannot check every claim against billing history ([interviews, p. 2](../data-pack/04_stakeholder_interview_notes.pdf)).
+**Evidence.** Lucknow's (CF-N02) share of orders rose from 15.3% to 20.9% and its fill rate fell to 80.6%; Kolkata's (CF-E01) fell from 17.9% to 13.3% (table B). On 30 Sep 2026 Lucknow was out of stock on **23 of 36 products**, while **₹2.06 crore** of stock at PTS (price to stockist) will reach stockists with under 60% of its shelf life left, which they may refuse (policy §7.1); **₹1.22 crore** of it is at Kolkata (cnf_stock_snapshot.csv, e.g. row 4783). After Kolkata's warehouse system changed in Feb 2026, 83% of its dispatches shipped a newer batch while an older one was on hand, against 28–35% elsewhere: a sign its first-expiry-first-out picking is broken. Unfilled orders reach **₹15.33 crore a year** at PTS, an upper limit, not lost sales.
 
-**Secondary user:** Kavita Rao (Head of Supply Chain), reviewing expiry-risk batches and short CFAs ([interviews, p. 2](../data-pack/04_stakeholder_interview_notes.pdf)); served by the pilot's stock view.
+- **Owners:** Kavita Rao, Head of Supply Chain; Vaishali Kapoor, Demand Planning (shares).
+- **Built:** stock view per month-end.
+- **Ask:** reset the C&F shares; check Kolkata's picking rules.
 
-**Plan for the money:** the pilot flags **₹20.25 L/yr** of invalid credits before the credit note (batch mode re-runs every register claim: ₹19.94 L/yr) and sends **₹86.26 L/yr** of credits that fail a check to a person, including ₹43.08 L/yr without an invoice reference for ledger and approval review; at risk, not saved. These are screens, not proven savings. For problem 1 the scheme check shows Commercial Finance, Arjun Sethi (NSM) and Rohan Mehta (CFO), each quarter, the free goods above the cap (₹1.58 cr/yr) and on orders below the 1.5× minimum; stopping them needs Sales to change practice. For problem 2 the stock view shows Kavita, per snapshot, where stock is short and where it will age; fixing shares is a Demand Planning change.
+### Rank 3. Claims are credited without proper checks
 
-## 5. Why it may be happening: observed signals
+**What happens.** C&Fs log and verify expiry, breakage and short-supply claims; Commercial Finance then raises the CN (credit note). Two people settle about 4,000 claims a year and "do not have time to check each claim against the billing history" (Neha Bansal, interviews p.2). Only 31 claims were rejected in 30 months.
 
-Quarter-end share is invoiced + free packs in the final 10 days ÷ quarter packs; FOC is free quantity × PTS ÷ primary net value. Source: exact-deduplicated [primary sales](../data-pack/data/primary_sales.csv), calculated in [sizing.py](sizing.py). v4.1 extended quarter-end schemes to Tier B SKUs on 15 Nov 2024; FY25 Q3 includes pre- and post-change days (policy revision history, p. 1).
+**Evidence, per year** (sizing_results.csv): **₹15.74 lakh** credited outside the filing window (§5.2); **₹4.45 lakh** repeat credits (§5.6), e.g. CLM-2603-01616 and CLM-2605-04488 (expiry_claims.csv rows 3269, 3596); ₹6,642 over-quantity (§5.5); **₹43.08 lakh** with no invoice reference (§5.4); ₹36.1 lakh with no recorded C&F check.
 
-| FY quarter | Last-10-day pack share | FOC / primary net value |
-|---|---:|---:|
-| FY25 Q1 | 20.38% | 1.18% |
-| FY25 Q2 | 21.17% | 1.25% |
-| FY25 Q3 | **35.35%** | **4.95%** |
-| FY25 Q4 | 34.63% | 4.69% |
-| FY26 Q1 | 34.69% | 4.68% |
-| FY26 Q2 | 31.89% | 3.75% |
-| FY26 Q3 | 30.60% | 3.47% |
-| FY26 Q4 | 29.14% | 3.19% |
-| FY27 Q1 | 30.64% | 3.69% |
-| FY27 Q2* | 27.84% | 2.82% |
+- **Owner:** Neha Bansal, Controller, Commercial Finance.
+- **Built:** claim check before credit: **₹19.94 lakh a year stopped**; **₹86.26 lakh a year sent to a person** (at risk, not saved).
+- **Ask:** run the check before every CN; C&Fs record their verification.
 
-**For Rohan’s “show me if schemes hurt us”:** FY25 Q2→Q3 late-quarter packs rose 21.17%→35.35% and FOC 1.25%→4.95%; FOC stayed above 3% in later full quarters, while the QBR says exceptions were CFO-approved—evidence of scheme-loading risk, not causation (QBR, pp. 1–2). Approving the Q2 FY27 exception on 25 Aug 2026, Rohan wrote: "Approved, last time. I want to see the expiry impact before December" ([inbox, p. 4](../data-pack/05_inbox_export.pdf)). Ludhiana voice notes also report Monte-LC excess after a 10+2 offer alongside Amox-Clav shortages, qualitative only ([voice-note log](voice_note_evidence_log.md#aud-20261001-wa0004--scheme-stock-and-shortage-in-ludhiana)).
+## 2. The CFO's forecasting request: our view
 
-CFA share is share of FY ordered packs. First group split-batch rows by invoice/date/CFA/stockist/SKU. [sizing.py](sizing.py) reports uncapped fill: `sum(invoiced + free) / sum(ordered)`; the comparison caps each grouped order at 100%: `sum(min(invoiced + free, ordered)) / sum(ordered)`. FY25 is **100.00% under both methods**: all 33,916 recorded groups match ordered quantity. The billed extract omits orders with no invoice.
+**A forecasting tool would recover none of the money we can size.** The forecast is national and "the allocation sheet splits it" (Vaishali Kapoor, interviews p.3). The quarter-end spike "is not demand" (Kavita Rao, p.1); she wants "not another forecast" (p.2). The losses come after the forecast: schemes, shares and claim checks. The [research note](research_note.md) explains why, with the laws behind each problem.
 
-| CFA | FY25 share; capped / uncapped fill | FY26 share / fill | FY27 H1 share / fill |
+## 3. Who uses the tool, and the plan for the money
+
+- **Weekly:** Neha Bansal's claims team. Credit, reject or send each claim to a person (rank 3).
+- **Quarterly:** Commercial Finance with Arjun Sethi and Rohan Mehta. Scheme check (rank 1).
+- **Monthly:** Kavita Rao. Stock view (rank 2).
+
+We built the claim check first: its rules are exact, the money is provable, and its owner asked for it. Ranks 1 and 2 are larger, but recovering them needs Sales and Planning to change practice; the tool makes them visible and owned. Every figure and its source: [money summary](money_summary.md).
+
+## 4. Open questions for the client
+
+1. What exactly is the CFO's 1% target measured on? FY27 Q1 claims: QBR ₹1.41 crore / 2.75% (p.2) vs extract ₹1.354 crore / 2.64%.
+2. Can Finance link claims to invoices, CNs, payments and reversals, to prove what was avoidable?
+3. Can Planning share the allocation versions, approvals and the demand behind the C&F shares?
+4. Can we get unbilled orders, order status, stockist sales and stock on hand?
+5. Annexure B's "average monthly purchase over the previous three months": all purchases, or only non-scheme ones? It moves the ineligible free goods from ₹50.2 lakh to ₹2.63 crore a year.
+
+## Appendix: the two tables
+
+**A. Quarter-end loading** (primary_sales.csv via [sizing.py](sizing.py)). The QBR's free-goods figures for FY26 Q1 to FY27 Q1 match exactly.
+
+| Quarter | FY25 Q1 | Q2 | **Q3** | Q4 | FY26 Q1 | Q2 | Q3 | Q4 | FY27 Q1 | Q2 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Packs shipped in last 10 days | 20.4% | 21.2% | **35.4%** | 34.6% | 34.7% | 31.9% | 30.6% | 29.1% | 30.6% | 27.8% |
+| FOC as % of sales (cap 3%) | 1.18% | 1.25% | **4.95%** | 4.69% | 4.68% | 3.75% | 3.47% | 3.19% | 3.69% | 2.82% |
+
+**B. C&F share of orders and fill rate.** Fill rate counts free packs and matches the QBR to rounding (QBR p.1).
+
+| C&F | FY25 share / fill | FY26 share / fill | FY27 H1 share / fill |
 |---|---:|---:|---:|
-| CF-E01 | 17.85%; 100.00% / 100.00% | 16.71% / 94.90% | 13.25% / 94.66% |
-| CF-N01 | 16.86%; 100.00% / 100.00% | 17.23% / 91.75% | 18.24% / 86.56% |
-| CF-N02 | 15.33%; 100.00% / 100.00% | 16.80% / 92.73% | **20.85% / 80.60%** |
-| CF-S01 | 18.59%; 100.00% / 100.00% | 18.31% / 95.89% | 17.67% / 87.63% |
-| CF-S02 | 15.72%; 100.00% / 100.00% | 15.46% / 94.49% | 15.00% / 88.69% |
-| CF-W01 | 15.65%; 100.00% / 100.00% | 15.50% / 93.39% | 14.99% / 91.96% |
+| CF-E01 Kolkata | 17.9% / 100% | 16.7% / 94.9% | 13.3% / 94.7% |
+| CF-N01 Gurugram | 16.9% / 100% | 17.2% / 91.8% | 18.2% / 86.6% |
+| **CF-N02 Lucknow** | 15.3% / 100% | 16.8% / 92.7% | **20.9% / 80.6%** |
+| CF-S01 Chennai | 18.6% / 100% | 18.3% / 95.9% | 17.7% / 87.6% |
+| CF-S02 Hyderabad | 15.7% / 100% | 15.5% / 94.5% | 15.0% / 88.7% |
+| CF-W01 Bhiwandi | 15.7% / 100% | 15.5% / 93.4% | 15.0% / 92.0% |
 
-Uncapped fill including free packs matches QBR FY26 Q1–Q4 and FY27 Q1 to rounding: 99.52%, 94.58%, 91.52%, 90.25%, 90.85% vs 99.5%, 94.6%, 91.5%, 90.3%, 90.9%. Capping yields 100% and fails to reconcile; QBR does not state its formula (p. 1). Kavita says FY26 shares may have rolled forward after a missed review; Vaishali confirms forecast/allocation are separate ([interviews, pp. 1, 3](../data-pack/04_stakeholder_interview_notes.pdf)). A planning voice note also flags the FY26 review gap ([voice-note log](voice_note_evidence_log.md#aud-20261013-wa0003--planning-allocation-and-forecast-discussion)); these support review, not causation.
-
-## 6. Open questions
-
-1. What is the CFO’s 1% numerator/denominator, and how should FY27 Q1 claims reconcile: QBR ₹1.41 cr / 2.75% (p. 2) vs extract ₹1.354 cr / 2.64%?
-2. Can Finance link claims to invoices, credit notes, payments, recoveries, and reversals to establish avoidable leakage?
-3. Can Planning provide allocation versions/approvals and the demand evidence used for CFA shares?
-4. Can the case provide non-invoiced orders, order status, sell-through, stock on hand, and final human-review ownership?
-5. Annexure B's "average monthly purchase over the previous three months": all purchases, or only non-scheme purchases? It moves free goods on ineligible orders from ₹50.2 L to ₹2.63 cr a year.
-
-**Reproduce:** from the learner-pack root run `python discovery/sizing.py` and `pytest discovery/test_sizing.py`; script writes [sizing_results.csv](sizing_results.csv) and prints driver tables. `*` = FY27 H1 through 30 Sep 2026.
+**Reproduce:** `python discovery/sizing.py` writes [sizing_results.csv](sizing_results.csv); tests: `pytest discovery/test_sizing.py`.

@@ -11,6 +11,11 @@
 - **Accuracy:** check set **19/19** (16 claims + 3 scheme cases; baseline 6/16); held-out 3/6, then 6/6 after fixes built against those cases. `pytest -q`: **116 passed**. Batch mode: ₹19.94 L/yr credited leakage the rules stop. Scheme check: ₹1.58 cr/yr above cap.
 - **Second user** (Kavita Rao, Supply Chain): stock view built (section 4).
 
+## Update — 2026-11-25 (discovery note rewritten for the steering group)
+
+- **Changed:** `Discovery_note.md` rewritten in plain business English for the steering group. It opens with the answer, then the three problems ranked by money, each with what happens, evidence, owner, what we built and the ask. Then the forecast view, users and plan, open questions, and an appendix with the two tables. Key terms are explained at first use (C&F, FOC, PTS, CN). Same figures and sources; voice-note evidence kept. Cross-references in the research note and money summary updated.
+- **Checks:** 2 A4 pages; every figure unchanged from the verified version (rounded table values checked against `sizing_results.csv`).
+
 ## Update — 2026-11-25 (numbers verified; SKU code fix)
 
 - **Checked:** every figure in `money_summary.md` recomputed with a fresh pandas script that shares no code with the app or `sizing.py`. Rejected credited claims ₹42.00 L/yr matched exactly. At risk did not: ₹90.41 L (app) vs ₹85.79 L (independent).

@@ -56,6 +56,12 @@ def index():
     return FileResponse(ROOT / "public" / "index.html")
 
 
+@app.get("/demos")
+def demos():
+    """Demo cases with the LangGraph flow (on Vercel a rewrite serves public/demos.html)."""
+    return FileResponse(ROOT / "public" / "demos.html")
+
+
 # On Vercel the public/ folder is served by the platform, and Vercel's docs say not to
 # mount it. On your laptop nothing serves it, so mount it only when not on Vercel.
 if not os.getenv("VERCEL"):

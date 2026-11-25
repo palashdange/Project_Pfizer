@@ -14,6 +14,10 @@
       elements.decisionOwner.textContent = "";
       elements.decisionOwner.hidden = true;
     }
+    if (elements.flow) {
+      elements.flow.replaceChildren();
+      elements.flow.hidden = true;
+    }
     elements.evidence.replaceChildren();
     elements.rawEvidence.textContent = "";
     elements.rawDetails.open = false;

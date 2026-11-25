@@ -81,3 +81,10 @@ def test_batch_endpoint_returns_totals_and_rejects_unknown_month(monkeypatch):
 
     assert ok.status_code == 200 and ok.json()["annualised_inr"]["leakage"] == "1.00"
     assert bad.status_code == 400 and "2030-01" in bad.json()["error"]
+
+
+def test_demos_page_is_served():
+    client = TestClient(app)
+    response = client.get("/demos")
+    assert response.status_code == 200
+    assert "Demo cases and the LangGraph flow" in response.text

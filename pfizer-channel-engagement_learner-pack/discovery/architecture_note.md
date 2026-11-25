@@ -73,10 +73,10 @@ flowchart TD
 |---|---|---|
 | Starter tool loop (commit `a22bdcc`) | 6/16 | — |
 | Claims graph, 24 Nov | **16/16** | 3/6 |
-| Current: plus 3 scheme and 2 stock cases | **21/21** | 6/6* |
+| Current: + 3 scheme, 2 stock, 1 free-text case | **22/22** | 6/6* |
 
 `python checks/run_checks.py` scores held-out (`holdout_`) cases separately; the live URL matches. \*The first run (3/6) exposed two gaps: pasted details were not compared with the register, and repeats of *pending* claims were missed (CLM-2608-02222 → CLM-2609-04449). Both were fixed against these cases, so 6/6 **is no longer an unseen-data score**; a fresh held-out set is needed.
 
 ## 6. Speed and cost (24 Nov 2026, `openai/gpt-4o-mini` via OpenRouter; live on Vercel `bom1` Mumbai, private repo, owner merges)
 
-**Cost per run:** a claim ID makes 1 model call (CLM-2404-04177: 825 tokens in / 56 out, $0.000157); free text with no ID makes 2 (520 / 96, $0.000136); scheme and stock reviews make 1. Means of 2 runs (LangChain usage callback) at OpenRouter list rates, $0.15/M in and $0.60/M out; other ID inputs cost up to $0.000170. **~4,000 claims/yr × ~$0.00016 ≈ $0.65/yr**, hosting excluded. Live: 2–2.7 s per review, 4–6 s for a scheme or stock review; NOT_FOUND 0.005 s.
+**Cost per run:** a claim ID makes 1 model call (CLM-2404-04177: 825 tokens in / 56 out, $0.000157); free text with no ID makes 2 (520 / 96, $0.000136); scheme and stock reviews make 1. Means of 2 runs at OpenRouter list prices ($0.15/M in, $0.60/M out). **~4,000 claims/yr × ~$0.00016 ≈ $0.65/yr**, hosting excluded. Live: 2–2.7 s a review, 4–6 s for scheme or stock.

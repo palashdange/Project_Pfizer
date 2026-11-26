@@ -49,7 +49,7 @@ flowchart LR
 
 **Decide rules, in order:** (1) any `fail` on window, duplicate or quantity → **REJECT**; (2) the input was an email (`EML-`) → **NEEDS_PERSON**, because correspondence is untrusted; (3) any other `fail`, `review` or `missing` → **NEEDS_PERSON**; (4) otherwise → **RECOMMEND_CREDIT**. If the claim isn't in the register → **NOT_FOUND**, with no model call.
 
-**Batch mode** (`POST /api/batch`): a second compiled graph runs `lookup → checks → decide` with no model over all 4,503 claims (≈25–33 s) or one month: 2,176 recommend credit, 532 reject, 1,795 needs a person. Per year: **₹19.94 L credited leakage the rules stop** (reconciles to the discovery note's ₹20.25 L) and **₹86.26 L at risk** (sent to a person; not counted as saved). **Scheme check:** ₹1.58 cr a year above the 3% cap; ₹50.2 L–₹2.63 cr on orders below the 1.5× minimum (two readings of "average monthly purchase"). **Stock** (30 Sep 2026): ₹2.06 cr will ship below the 60% norm, ₹1.22 cr at Kolkata. Every figure, method and source: [money summary](money_summary.md).
+**Batch mode** (`POST /api/batch`): a second compiled graph runs `lookup → checks → decide` with no model over all 4,503 claims (≈25–33 s) or a year, quarter or month: 2,176 recommend credit, 532 reject, 1,795 needs a person. Per year: **₹19.94 L credited leakage the rules stop** (reconciles to the discovery note's ₹20.25 L) and **₹86.26 L at risk** (sent to a person; not counted as saved). **Scheme check:** ₹1.58 cr a year above the 3% cap; ₹50.2 L–₹2.63 cr on orders below the 1.5× minimum (two readings of "average monthly purchase"). **Stock** (30 Sep 2026): ₹2.06 cr will ship below the 60% norm, ₹1.22 cr at Kolkata. Every figure, method and source: [money summary](money_summary.md).
 
 ## 4. Failure handling
 
@@ -64,7 +64,7 @@ flowchart LR
 | Explanation adds or changes a number, or uses approval / "has been done" wording | Code fallback text, labelled "written by code" on the page | `test_graph.py` (4) |
 | Missing batch, sales or invoice row; bad date or quantity; value ≠ qty × PTS | `missing`/`fail` → `NEEDS_PERSON`, never a guess | `test_rules.py`; check set `missing_batch_01`, `blank_invoice_01/02` |
 
-`pytest -q`: **139 passed**; Node tests **32/32** (page, evidence and result view). The tests cover every boundary in `rules.py` (day 90, day 7, the 60% shelf-life threshold, the 3% cap, PTS value). `agent/tools.py` (earlier tool loop) is unit-tested but **not wired into the graph**.
+`pytest -q`: **142 passed**; Node tests **34/34** (page, evidence and result view). The tests cover every boundary in `rules.py` (day 90, day 7, the 60% shelf-life threshold, the 3% cap, PTS value). `agent/tools.py` (earlier tool loop) is unit-tested but **not wired into the graph**.
 
 ## 5. Accuracy
 

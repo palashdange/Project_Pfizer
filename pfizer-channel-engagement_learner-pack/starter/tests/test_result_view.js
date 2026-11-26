@@ -72,3 +72,17 @@ test("claim search rows show stockist, type, date, product, batch, status and �
   assert.match(ClaimSearch.renderOption({ kind: "email", id: "EML-017", from_name: "X", subject: "S", claim_date: "2026-10-01" }, 1), /Claim email/);
   assert.equal(ClaimSearch.summaryText({ total_claims: 328, pending_only: false }, 20), "Showing 20 of 328 claims. Type more to narrow.");
 });
+
+test("batch picker groups financial years, quarters and months with claim counts", () => {
+  const { periodOptions } = require("../public/batch.js");
+  const html = periodOptions({
+    all: { value: "", span: "Apr 2024–Sep 2026", claims: 4503 },
+    years: [{ value: "FY27", span: "Apr–Sep 2026 so far", claims: 1189 }],
+    quarters: [{ value: "FY27 Q2", span: "Jul–Sep 2026", claims: 631 }],
+    months: [{ value: "2026-09", span: "Sep 2026", claims: 229 }],
+  });
+  assert.match(html, /^<option value="">All months · Apr 2024–Sep 2026 · 4,503 claims<\/option>/);
+  assert.match(html, /<optgroup label="Financial years"><option value="FY27">FY27 · Apr–Sep 2026 so far · 1,189 claims<\/option>/);
+  assert.match(html, /<optgroup label="Quarters"><option value="FY27 Q2">FY27 Q2 · Jul–Sep 2026 · 631 claims/);
+  assert.match(html, /<optgroup label="Months"><option value="2026-09">Sep 2026 · 229 claims/);
+});

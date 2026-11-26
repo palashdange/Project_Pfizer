@@ -90,7 +90,7 @@ Section 4 of the page, or ask "Stock review" (latest month-end) or "Stock review
 
 ## Batch mode: what the pilot would have caught
 
-`POST /api/batch` (and section 2 of the page) runs every register claim, or one month, through the same checks with no model calls. Over 30 months, per year: **₹19.94 L of credited leakage the rules stop** (reconciles to the discovery note's ₹20.25 L), and **₹86.26 L credited without the checks passing**, which goes to a person and is counted as at risk, not saved.
+`POST /api/batch` (and section 2 of the page) runs every register claim, or one financial year, quarter or month, through the same checks with no model calls. Over 30 months, per year: **₹19.94 L of credited leakage the rules stop** (reconciles to the discovery note's ₹20.25 L), and **₹86.26 L credited without the checks passing**, which goes to a person and is counted as at risk, not saved.
 
 Run it from `pfizer-channel-engagement_learner-pack/starter`:
 
@@ -118,6 +118,7 @@ Deployed on Vercel (Hobby) with root directory `pfizer-channel-engagement_learne
 |---|---|
 | `pfizer-channel-engagement_learner-pack/discovery/Discovery_note.md` | Ranked problems in ₹, evidence, owners, view on the CFO's ask |
 | `pfizer-channel-engagement_learner-pack/discovery/architecture_note.md` | Graph, code vs model split, failure handling, cost |
+| `pfizer-channel-engagement_learner-pack/discovery/Project_Sankalp_deck.pptx` | 10-slide deck on the FDE Academy template, with speaker notes (PDF alongside) |
 | `pfizer-channel-engagement_learner-pack/discovery/money_summary.md` | Every ₹ figure on one page: method, source, and stopped / at risk / context |
 | `pfizer-channel-engagement_learner-pack/discovery/research_note.md` | Trade-channel terms, laws read at source, and why the problems happen |
 | `pfizer-channel-engagement_learner-pack/discovery/decision_log.md` | Design choices and why |

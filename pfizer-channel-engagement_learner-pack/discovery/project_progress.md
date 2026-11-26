@@ -11,6 +11,10 @@
 - **Accuracy:** check set **22/22** (16 claims + 3 scheme, 2 stock, 1 free text; baseline 6/16); held-out round 1 3/6, then 6/6 after fixes built against those cases; held-out round 2 **8/8** (labelled before running). `pytest -q`: **139 passed**; Node tests 32/32. Batch mode: ₹19.94 L/yr credited leakage the rules stop. Scheme check: ₹1.58 cr/yr above cap.
 - **Second user** (Kavita Rao, Supply Chain): stock view built (section 4).
 
+## Update — 2026-11-26 (repo tidy-up)
+
+- **Changed:** removed `discovery/archive/` (superseded drafts; still in Git history). The learner-pack README (the academy's file) now starts with a pointer to the root README. Root README title covers claims, schemes and stock, and notes that the app reads `starter/data/`, an identical copy of the raw extracts.
+
 ## Update — 2026-11-26 (batch periods)
 
 - **Changed:** the batch picker now loads on page open (it only filled in after a first run) and offers all months, each financial year, each quarter and each month, newest first, with claim counts (`GET /api/batch/periods`, from claim dates only). `run_batch` accepts "FY26" and "FY26 Q3" as well as "YYYY-MM", annualising by the register months inside the period; a quarter or month lists its claims. A rejected claim's "first problem" is now the rule that failed. Route badges use the plain labels.

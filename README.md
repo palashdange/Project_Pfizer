@@ -1,6 +1,6 @@
 <img src="pfizer-channel-engagement_learner-pack/brand/logo.svg" alt="Project Sankalp" width="260">
 
-# Project Sankalp: claims screening copilot
+# Project Sankalp copilot: claims, schemes and stock checks
 
 A pilot for the **Commercial Finance claims team** in a fictional pharma trade channel. It checks each expiry, breakage or short-supply claim against trade policy **CO-POL-014** and routes it to **Recommend credit**, **Reject**, **Needs a person**, or **Not found**. Every result shows the policy clause and the source rows it used.
 
@@ -130,6 +130,8 @@ Deployed on Vercel (Hobby) with root directory `pfizer-channel-engagement_learne
 | `pfizer-channel-engagement_learner-pack/starter/checks/` | Check set and runner |
 | `pfizer-channel-engagement_learner-pack/brand/` | Project Sankalp logo: SVG, PNG for slides, white-text version for dark slides |
 | `pfizer-channel-engagement_learner-pack/data-pack/` | The client documents, CSV extracts and voice notes |
+
+The app reads `starter/data/`, an identical copy of the raw extracts in `data-pack/data/`; cleaning (repeated rows, code formats, dates) happens in code (`agent/data.py`), not in the files.
 
 ## Limits
 

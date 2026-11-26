@@ -30,4 +30,4 @@ python checks/run_checks.py
 uvicorn app:app --reload
 
 ## Current task
-Feature work is done: claims, batch, scheme check, stock view, held-out round 2 and the 20 s model timeout with one retry (`config.py`, `tests/test_llm.py`). Remaining work is the deck. `/demos` holds the one-per-outcome cases; a test ties each to its check-set row, so add new demo cases to the check set first.
+Feature work is done: claims, batch, scheme check, stock view, held-out round 2 and the 20 s model timeout with one retry (`config.py`, `tests/test_llm.py`). Remaining work is the deck. `/demos` holds the one-per-outcome cases; a test ties each to its check-set row, so add new demo cases to the check set first. Its second section holds 12 synthetic messages (made-up wording, real claim numbers) from `checks/synthetic_messages.json`; they are for the demo only, are not in the check set, and a separate test keeps the page and the JSON in step.

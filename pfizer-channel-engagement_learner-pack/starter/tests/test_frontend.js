@@ -469,3 +469,24 @@ test("pages show the original Project Sankalp mark and favicon; Pfizer appears a
   const mark = fs.readFileSync(path.join(__dirname, "../public/logo-mark.svg"), "utf8");
   assert.match(mark, /<title>Project Sankalp<\/title>/);
 });
+
+test("synthetic demo messages are labelled, separate from the check set, and cover every outcome", () => {
+  const html = fs.readFileSync(path.join(__dirname, "../public/demos.html"), "utf8");
+  const rows = [...html.matchAll(/data-expected="([A-Z_]+)">[^<]*<\/span><button[^>]*data-synthetic="([^"]+)" data-demo="([^"]+)"/g)];
+  // 1. Exactly 12 messages, in their own section, clearly marked as made up.
+  assert.equal(rows.length, 12);
+  assert.match(html, /Synthetic messages \(made up for the demo\)/);
+  assert.match(html, /They are not part of the check set/);
+  // 2. None of them is a check-set case.
+  const csv = fs.readFileSync(path.join(__dirname, "../checks/check_set.csv"), "utf8");
+  for (const [, , id] of rows) assert.ok(!csv.includes(id), `${id} is not in the check set`);
+  // 3. They match the source list (expected outcome and wording) that was run on the live model.
+  const source = JSON.parse(fs.readFileSync(path.join(__dirname, "../checks/synthetic_messages.json"), "utf8"));
+  const decode = (v) => v.replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+  assert.deepEqual(rows.map(([, route, id, message]) => [id, route, decode(message)]),
+    source.map((c) => [c.id, c.expected, c.message]));
+  // 4. Together they cover all four outcomes: 3 credit, 3 reject, 4 a person, 2 not found.
+  const counts = {};
+  for (const [, route] of rows) counts[route] = (counts[route] || 0) + 1;
+  assert.deepEqual(counts, { RECOMMEND_CREDIT: 3, REJECT: 3, NEEDS_PERSON: 4, NOT_FOUND: 2 });
+});

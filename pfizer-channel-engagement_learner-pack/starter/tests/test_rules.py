@@ -329,3 +329,23 @@ def test_months_of_cover_against_two_month_top_up_norm():
     assert months_of_cover(Decimal("201"), Decimal("100"))["status"] == "above_norm"
     assert months_of_cover(Decimal("0"), Decimal("100"))["status"] == "out_of_stock"
     assert months_of_cover(Decimal("50"), Decimal("0"))["status"] == "no_outward"
+
+
+def test_pasted_quantity_may_carry_a_unit_but_must_still_be_a_number():
+    from agent.rules import parse_pasted_quantity
+    assert parse_pasted_quantity("80 strips") == 80
+    assert parse_pasted_quantity("1,782 packs") == 1782
+    assert parse_pasted_quantity("612 bottles") == 612
+    for bad in ("about 80", "80-90 strips", "eighty"):
+        with pytest.raises(ValueError):
+            parse_pasted_quantity(bad)
+
+
+def test_pasted_product_or_stockist_names_are_not_compared_with_codes():
+    register = {"sku_code": "PFL1507", "stockist_code": "STK0145", "qty": "80"}
+    rows = compare_pasted_fields({"sku_code": "Sitagliptin 100", "stockist_code": "Apex Pharma", "qty": "80 strips"}, register)
+    assert rows == [{"field": "qty", "pasted": "80 strips", "register": "80", "match": True}]
+    coded = compare_pasted_fields({"sku_code": "PFL-1507", "stockist_code": "STK0146"}, register)
+    assert [(r["field"], r["match"]) for r in coded] == [("stockist_code", False), ("sku_code", True)]
+    wrong = compare_pasted_fields({"qty": "612 bottles"}, {"qty": "512"})
+    assert wrong[0]["match"] is False

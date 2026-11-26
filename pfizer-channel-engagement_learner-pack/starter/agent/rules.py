@@ -385,6 +385,18 @@ def parse_amount(value: str) -> Decimal:
     return amount
 
 
+_PASTED_QTY = re.compile(r"^\s*([\d,]+(?:\.\d+)?)\s*(?:strips?|packs?|pcs|pieces|bottles?|tubes?|tabs?|tablets?|caps?|capsules?|units?|nos\.?|boxes?)?\s*$", re.IGNORECASE)
+_CODE_SHAPES = {"sku_code": re.compile(r"^PFL-?\d{4}$", re.IGNORECASE), "stockist_code": re.compile(r"^STK-?\d{4}$", re.IGNORECASE)}
+
+
+def parse_pasted_quantity(value: str) -> Decimal:
+    """A pasted quantity may carry its unit ("80 strips", "612 bottles"); register quantities never do."""
+    match = _PASTED_QTY.match(value or "")
+    if not match:
+        raise ValueError(f"Pasted quantity is not a number of packs: {value!r}")
+    return parse_pack_quantity(match.group(1))
+
+
 def compare_pasted_fields(pasted: dict, register: dict) -> list[dict]:
     """Compare fields read from pasted text with the register values; return one row per compared field.
 
@@ -395,10 +407,14 @@ def compare_pasted_fields(pasted: dict, register: dict) -> list[dict]:
     rows = []
     for field in ("stockist_code", "sku_code", "batch_no", "invoice_ref"):
         if pasted.get(field) and register.get(field):
-            same = pasted[field].strip().upper() == register[field].strip().upper()
+            shape = _CODE_SHAPES.get(field)
+            if shape and not shape.match(pasted[field].strip()):
+                # A product or stockist *name* ("Sitagliptin 100") is not a code; it can't be compared exactly.
+                continue
+            same = pasted[field].strip().upper().replace("-", "") == register[field].strip().upper().replace("-", "")
             rows.append({"field": field, "pasted": pasted[field], "register": register[field], "match": same})
     comparisons = (
-        ("qty", parse_pack_quantity, parse_pack_quantity),
+        ("qty", parse_pasted_quantity, parse_pack_quantity),
         ("claim_value", parse_amount, parse_amount),
         ("expiry_claimed", parse_expiry_month, parse_expiry_month),
     )

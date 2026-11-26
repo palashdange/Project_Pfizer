@@ -9,7 +9,7 @@ A pilot for the **Commercial Finance claims team** in a fictional pharma trade c
 ## Live demo
 
 - App: **https://project-pfizer.vercel.app/**
-- **Demo cases with the LangGraph flow: https://project-pfizer.vercel.app/demos.** Eleven hand-checked cases, one per outcome (credit, reject, needs a person, not found, scheme, stock, free text). Each shows its expected result, then the live answer, the evidence, and the route through the graph lit up step by step: yellow = model, white = code, each check green / red / amber by result.
+- **Demo cases with the LangGraph flow: https://project-pfizer.vercel.app/demos.** Eleven hand-checked cases, one per outcome (credit, reject, needs a person, not found, scheme, stock, free text). Each shows its expected result, then the live answer, the evidence, and the route through the graph lit up step by step: yellow = model, white = code, each check green / red / amber by result. A second section holds **12 synthetic messages** (made-up email, WhatsApp and Hinglish wording that points at real claims): 3 credit, 3 reject, 4 to a person, 2 not found, all 12 as expected on the live model. They are for the demo only and are not in the check set.
 - Health check: **https://project-pfizer.vercel.app/api/health**
 
 ## The problem
@@ -118,7 +118,7 @@ Deployed on Vercel (Hobby) with root directory `pfizer-channel-engagement_learne
 |---|---|
 | `pfizer-channel-engagement_learner-pack/discovery/Discovery_note.md` | Ranked problems in ₹, evidence, owners, view on the CFO's ask |
 | `pfizer-channel-engagement_learner-pack/discovery/architecture_note.md` | Graph, code vs model split, failure handling, cost |
-| `pfizer-channel-engagement_learner-pack/PDFs/` | The submitted PDFs: discovery note, architecture note, deck |
+| `pfizer-channel-engagement_learner-pack/Deliverable PDFs/` | The submitted PDFs: discovery note, architecture note, deck |
 | `pfizer-channel-engagement_learner-pack/discovery/Project_Sankalp_deck.pptx` | 10-slide deck on the FDE Academy template, with speaker notes |
 | `pfizer-channel-engagement_learner-pack/discovery/money_summary.md` | Every ₹ figure on one page: method, source, and stopped / at risk / context |
 | `pfizer-channel-engagement_learner-pack/discovery/research_note.md` | Trade-channel terms, laws read at source, and why the problems happen |

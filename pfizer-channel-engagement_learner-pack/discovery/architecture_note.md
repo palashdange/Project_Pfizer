@@ -64,7 +64,7 @@ flowchart LR
 | Explanation adds or changes a number, or uses approval / "has been done" wording | Code fallback text, labelled "written by code" on the page | `test_graph.py` (4) |
 | Missing batch, sales or invoice row; bad date or quantity; value ≠ qty × PTS | `missing`/`fail` → `NEEDS_PERSON`, never a guess | `test_rules.py`; check set `missing_batch_01`, `blank_invoice_01/02` |
 
-`pytest -q`: **142 passed**; Node tests **34/34** (page, evidence and result view). The tests cover every boundary in `rules.py` (day 90, day 7, the 60% shelf-life threshold, the 3% cap, PTS value). `agent/tools.py` (earlier tool loop) is unit-tested but **not wired into the graph**.
+`pytest -q`: **144 passed**; Node tests **35/35** (page, evidence and result view). The tests cover every boundary in `rules.py` (day 90, day 7, the 60% shelf-life threshold, the 3% cap, PTS value). `agent/tools.py` (earlier tool loop) is unit-tested but **not wired into the graph**.
 
 ## 5. Accuracy
 

@@ -1,3 +1,5 @@
+> **This folder holds the FDE Academy learner pack plus our work.** For the project itself (live pilot, how it works, accuracy, deliverables), start at the [root README](../README.md).
+
 # The Pfizer Channel Engagement: learner pack
 
 Start with `01_readers_guide.pdf`, then read `02_project_brief.pdf`.

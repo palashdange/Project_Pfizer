@@ -249,3 +249,12 @@ pre { overflow: auto; max-height: 420px; background: #fff; border: 1px solid #e1
 .brand-title { display: flex; align-items: center; gap: 12px; }
 .brand-mark { flex: none; width: 40px; height: 40px; }
 @media (max-width: 620px) { .brand-mark { width: 32px; height: 32px; } .brand-title { gap: 9px; } }
+
+/* Synthetic demo messages (made-up wording, real claim numbers) */
+.demo-column { display: grid; gap: 18px; align-content: start; min-width: 0; }
+.synthetic-cases { border-style: dashed; }
+.channel-tag { display: inline-block; justify-self: start; border-radius: 999px; background: #f1ecfb; color: #5b34a8; padding: 2px 8px; font-size: 11px !important; font-weight: 700; }
+.synthetic-message { display: block; color: #1b2033 !important; font-size: 13px !important; font-style: italic; line-height: 1.45; overflow-wrap: anywhere; }
+.synthetic-message::before { content: "\201C"; } .synthetic-message::after { content: "\201D"; }
+.synthetic-case { flex-direction: column; align-items: stretch; }
+.synthetic-case .demo-action { justify-content: space-between; }

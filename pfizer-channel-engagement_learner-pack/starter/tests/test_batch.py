@@ -65,3 +65,24 @@ def test_at_stake_uses_claim_value_or_quantity_times_pts():
     assert at_stake_inr({"claim_value_inr": "3,936.80"}, None) == Decimal("3936.80")
     assert at_stake_inr({"claim_value_inr": "", "qty_claimed": "400"}, {"pts_inr": "98.7"}) == Decimal("39480.00")
     assert at_stake_inr({"claim_value_inr": "", "qty_claimed": "400"}, None) is None
+
+
+def test_quarter_and_year_periods_select_their_months_and_annualise_by_them(rows):
+    quarter = batch.run_batch("FY25 Q4")  # Jan-Mar 2025: both fixture months
+    assert quarter["months"] == 2 and quarter["claims_reviewed"] == 6
+    assert quarter["period"] == "FY25 Q4 (Jan–Feb 2025)"
+    assert [c["claim_no"] for c in quarter["claims"]][:2] == ["C1", "C2"]  # a quarter lists its claims
+    year = batch.run_batch("fy25")
+    assert year["months"] == 2 and year["annualised_inr"] == batch.run_batch()["annualised_inr"]
+    with pytest.raises(ValueError, match="No claims in the register"):
+        batch.run_batch("FY24 Q1")
+
+
+def test_periods_come_from_claim_dates_newest_first_with_counts():
+    periods = batch.available_periods()
+    assert periods["all"]["claims"] == 4503 and periods["all"]["months"] == 30
+    assert [p["value"] for p in periods["years"]] == ["FY27", "FY26", "FY25"]
+    assert periods["years"][0]["span"] == "Apr–Sep 2026 so far"
+    assert periods["quarters"][0] == {"value": "FY27 Q2", "span": "Jul–Sep 2026", "months": 3, "claims": 631}
+    assert periods["months"][0]["value"] == "2026-09" and len(periods["months"]) == 30
+    assert sum(p["claims"] for p in periods["years"]) == sum(p["claims"] for p in periods["months"]) == 4503

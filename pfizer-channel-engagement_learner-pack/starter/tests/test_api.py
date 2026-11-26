@@ -88,3 +88,11 @@ def test_demos_page_is_served():
     response = client.get("/demos")
     assert response.status_code == 200
     assert "Demo cases and the LangGraph flow" in response.text
+
+
+def test_batch_periods_endpoint_lists_years_quarters_and_months():
+    body = TestClient(app).get("/api/batch/periods").json()
+    assert body["all"]["claims"] == 4503
+    assert body["years"][0]["value"] == "FY27"
+    assert body["quarters"][-1]["value"] == "FY25 Q1"
+    assert body["months"][-1]["value"] == "2024-04"

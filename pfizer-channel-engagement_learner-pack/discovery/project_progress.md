@@ -11,6 +11,11 @@
 - **Accuracy:** check set **22/22** (16 claims + 3 scheme, 2 stock, 1 free text; baseline 6/16); held-out round 1 3/6, then 6/6 after fixes built against those cases; held-out round 2 **8/8** (labelled before running). `pytest -q`: **139 passed**; Node tests 32/32. Batch mode: ₹19.94 L/yr credited leakage the rules stop. Scheme check: ₹1.58 cr/yr above cap.
 - **Second user** (Kavita Rao, Supply Chain): stock view built (section 4).
 
+## Update — 2026-11-26 (batch periods)
+
+- **Changed:** the batch picker now loads on page open (it only filled in after a first run) and offers all months, each financial year, each quarter and each month, newest first, with claim counts (`GET /api/batch/periods`, from claim dates only). `run_batch` accepts "FY26" and "FY26 Q3" as well as "YYYY-MM", annualising by the register months inside the period; a quarter or month lists its claims. A rejected claim's "first problem" is now the rule that failed. Route badges use the plain labels.
+- **Evidence/checks:** all-months totals unchanged (₹19.94 L stopped, ₹86.26 L at risk, 2,176 / 532 / 1,795). `pytest -q` 142 passed; Node 34/34; browser run of FY27 Q2 (631 claims).
+
 ## Update — 2026-11-26 (deck and logo)
 
 - **Changed:** 10-slide deck built on the FDE Academy presentation template (`discovery/Project_Sankalp_deck.pptx`, PDF alongside): cover, context, sources, industry research, ranked problems, solution graph, live demo and accuracy, cost/guardrails/scale, impact, close. Speaker notes on every slide carry the sources and persona tips. Original Project Sankalp logo added to the pages, favicon and README; no Pfizer logo (case pack: Pfizer Limited is not involved).

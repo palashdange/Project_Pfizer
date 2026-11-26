@@ -19,7 +19,7 @@
     return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(amount);
   }
 
-  const ROUTE_LABEL = { RECOMMEND_CREDIT: "RECOMMEND CREDIT", REJECT: "REJECT", NEEDS_PERSON: "NEEDS PERSON" };
+  const ROUTE_LABEL = { RECOMMEND_CREDIT: "Credit recommended", REJECT: "Reject", NEEDS_PERSON: "Needs a person" };
   const ROUTE_TONE = { RECOMMEND_CREDIT: "recommend", REJECT: "reject", NEEDS_PERSON: "review" };
 
   function renderBatch(result) {
@@ -45,7 +45,7 @@
         </tr>`).join("");
     // Rejects and needs-a-person come first from the API; show those up front, the rest on request.
     const SHOWN = 15;
-    const table = !claims ? '<p class="muted">Pick a single month to list its claims.</p>' : `
+    const table = !claims ? '<p class="muted">Pick a quarter or a month to list its claims.</p>' : `
       <div class="table-wrap"><table>${head}<tbody>${rowsHtml(claims.slice(0, SHOWN))}</tbody></table></div>
       ${claims.length > SHOWN ? `<details class="more-claims"><summary>Show the other ${claims.length - SHOWN} claims</summary>
         <div class="table-wrap"><table>${head}<tbody>${rowsHtml(claims.slice(SHOWN))}</tbody></table></div></details>` : ""}`;
@@ -59,7 +59,20 @@
       <p class="citation">Source: ${escapeHtml(result.source || "expiry_claims.csv")} Same checks as a single review; no model calls. A person decides every claim.</p>`;
   }
 
-  const api = { formatLakh, renderBatch };
+  // Picker options from /api/batch/periods: all months, then years, quarters and months, newest first.
+  function periodOptions(periods) {
+    const count = (n) => `${Number(n || 0).toLocaleString("en-IN")} claims`;
+    const option = (p, label) => `<option value="${escapeHtml(p.value)}">${escapeHtml(label)} · ${escapeHtml(count(p.claims))}</option>`;
+    const all = periods.all ? option(periods.all, `All months · ${periods.all.span}`) : '<option value="">All months in the register</option>';
+    const group = (label, list, text) => (list && list.length
+      ? `<optgroup label="${escapeHtml(label)}">${list.map((p) => option(p, text(p))).join("")}</optgroup>` : "");
+    return all
+      + group("Financial years", periods.years, (p) => `${p.value} · ${p.span}`)
+      + group("Quarters", periods.quarters, (p) => `${p.value} · ${p.span}`)
+      + group("Months", periods.months, (p) => p.span);
+  }
+
+  const api = { formatLakh, periodOptions, renderBatch };
   root.BatchView = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 
@@ -74,7 +87,7 @@
   async function run() {
     button.disabled = true;
     select.disabled = true;
-    status.textContent = select.value ? "Checking the month's claims…" : "Checking every claim in the register (first run takes about half a minute)…";
+    status.textContent = select.value ? "Checking the claims in this period…" : "Checking every claim in the register (first run takes about half a minute)…";
     try {
       const res = await fetch("/api/batch", {
         method: "POST",
@@ -83,9 +96,6 @@
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `Server returned ${res.status}`);
-      if (select.options.length <= 1 && Array.isArray(data.available_months)) {
-        data.available_months.slice().reverse().forEach((m) => select.add(new Option(m, m)));
-      }
       out.innerHTML = renderBatch(data);
       out.hidden = false;
       status.textContent = "";
@@ -97,4 +107,10 @@
     }
   }
   button.addEventListener("click", run);
+
+  // Fill the picker as soon as the page opens; counting claims per period needs no routing.
+  fetch("/api/batch/periods")
+    .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`Server returned ${res.status}`))))
+    .then((periods) => { select.innerHTML = periodOptions(periods); })
+    .catch(() => { /* Keep "All months"; the batch still runs. */ });
 }(typeof window !== "undefined" ? window : globalThis));

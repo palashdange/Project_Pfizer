@@ -90,7 +90,7 @@ Section 4 of the page, or ask "Stock review" (latest month-end) or "Stock review
 
 ## Batch mode: what the pilot would have caught
 
-`POST /api/batch` (and section 2 of the page) runs every register claim, or one month, through the same checks with no model calls. Over 30 months, per year: **₹19.94 L of credited leakage the rules stop** (reconciles to the discovery note's ₹20.25 L), and **₹86.26 L credited without the checks passing**, which goes to a person and is counted as at risk, not saved.
+`POST /api/batch` (and section 2 of the page) runs every register claim, or one financial year, quarter or month, through the same checks with no model calls. Over 30 months, per year: **₹19.94 L of credited leakage the rules stop** (reconciles to the discovery note's ₹20.25 L), and **₹86.26 L credited without the checks passing**, which goes to a person and is counted as at risk, not saved.
 
 Run it from `pfizer-channel-engagement_learner-pack/starter`:
 

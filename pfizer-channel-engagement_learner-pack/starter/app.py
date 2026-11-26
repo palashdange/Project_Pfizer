@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 from typing import Optional
 
-from agent.batch import run_batch
+from agent.batch import available_periods, run_batch
 from agent.graph import run_question
 from agent.search import search_claims
 
@@ -25,7 +25,7 @@ class Ask(BaseModel):
 
 
 class Batch(BaseModel):
-    month: Optional[str] = None  # "YYYY-MM"; omit for every month in the register
+    month: Optional[str] = None  # "YYYY-MM", "FY26" or "FY26 Q3"; omit for every month in the register
 
 
 @app.get("/api/health")
@@ -41,6 +41,12 @@ def ask(body: Ask):
         return run_question(body.question)
     except ValueError as err:  # missing key or bad input: say so instead of a bare 500
         return JSONResponse({"error": str(err)}, status_code=503)
+
+
+@app.get("/api/batch/periods")
+def batch_periods():
+    """Years, quarters and months that have claims, newest first, with claim counts (no routing)."""
+    return available_periods()
 
 
 @app.post("/api/batch")

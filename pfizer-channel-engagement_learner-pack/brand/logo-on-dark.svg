@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 72" role="img" aria-label="Project Sankalp">
+  <title>Project Sankalp</title>
+  <g transform="translate(4 4)">
+    <path d="M32 4 L55 12.5 V30 C55 45.5 45 55.5 32 60.5 C19 55.5 9 45.5 9 30 V12.5 Z" fill="#123b70"/>
+    <path d="M32 4 L55 12.5 V30 C55 45.5 45 55.5 32 60.5 Z" fill="#1d4f8e"/>
+    <path d="M32 9.5 L50 16 V30 C50 42 42.5 50 32 54.5" fill="none" stroke="#3973c6" stroke-width="1.6" stroke-linecap="round" opacity=".9"/>
+    <path d="M20.5 32.5 L28.5 40.5 L44 24.5" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="76" y="30" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="2.6" fill="#8db4ea">PROJECT</text>
+  <text x="74.5" y="58" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="31" font-weight="800" letter-spacing="-0.6" fill="#ffffff">Sankalp</text>
+</svg>

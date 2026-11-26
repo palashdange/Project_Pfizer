@@ -244,3 +244,8 @@ pre { overflow: auto; max-height: 420px; background: #fff; border: 1px solid #e1
   .combo-options .demo-link { margin-left: 0; }
   .checks-table th:nth-child(4), .checks-table td.clause { display: none; }
 }
+
+/* Project Sankalp mark (original logo; Pfizer appears only as text) */
+.brand-title { display: flex; align-items: center; gap: 12px; }
+.brand-mark { flex: none; width: 40px; height: 40px; }
+@media (max-width: 620px) { .brand-mark { width: 32px; height: 32px; } .brand-title { gap: 9px; } }

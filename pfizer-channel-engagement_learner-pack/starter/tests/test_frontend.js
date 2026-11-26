@@ -457,3 +457,15 @@ test("flow view groups the parallel checks into one step and colours checks by r
     assert.ok(FlowView.NODES[a] && FlowView.NODES[b], edge);
   }
 });
+
+test("pages show the original Project Sankalp mark and favicon; Pfizer appears as text only", () => {
+  for (const page of ["index.html", "demos.html"]) {
+    const html = fs.readFileSync(path.join(__dirname, "../public", page), "utf8");
+    assert.match(html, /<link rel="icon" type="image\/svg\+xml" href="\/logo-mark\.svg">/);
+    assert.match(html, /class="brand-mark" src="\/logo-mark\.svg"/);
+    assert.match(html, /Fictional training case/);
+    assert.doesNotMatch(html, /pfizer[^"]*\.(svg|png|jpg)/i);
+  }
+  const mark = fs.readFileSync(path.join(__dirname, "../public/logo-mark.svg"), "utf8");
+  assert.match(mark, /<title>Project Sankalp<\/title>/);
+});
